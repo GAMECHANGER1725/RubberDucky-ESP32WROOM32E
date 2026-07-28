@@ -1,0 +1,11 @@
+REM Harmless demo: open TextEdit on macOS via Spotlight and type a message
+REM Target Mac must be paired with "ESP32 Keyboard" over Bluetooth first
+DEFAULT_DELAY 40
+DELAY 500
+GUI SPACE
+DELAY 400
+STRING TextEdit
+ENTER
+DELAY 1200
+STRING Hello from an ESP32 BLE keyboard!
+ENTER

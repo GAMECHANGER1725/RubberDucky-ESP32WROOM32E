@@ -1,0 +1,12 @@
+REM Harmless demo: open Notepad on Windows and type a message
+REM Target must be paired with "ESP32 Keyboard" over Bluetooth first
+DEFAULT_DELAY 40
+DELAY 500
+GUI r
+DELAY 400
+STRING notepad
+ENTER
+DELAY 800
+STRING Hello from an ESP32-WROOM-32E over BLE!
+ENTER
+STRING This is a keystroke-injection demo.

@@ -1,0 +1,12 @@
+REM Demonstrates modifier combos, arrows, function keys and REPEAT
+DEFAULT_DELAY 50
+DELAY 500
+STRING abc
+DELAY 200
+BACKSPACE
+REPEAT 2
+DELAY 200
+STRING done
+LEFT
+LEFT
+RIGHT

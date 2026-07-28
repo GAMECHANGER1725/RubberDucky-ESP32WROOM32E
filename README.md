@@ -92,27 +92,56 @@ pio device monitor       # 115200 baud — shows the AP IP and BLE status
 
 1. Flash the board and open the serial monitor to confirm it printed the AP IP.
 2. **Pair the target:** on the target PC, go to Bluetooth settings, add a
-   device, and select **`ESP32 Keyboard`**.
+   device, and select **`ESP32 Keyboard`** (or whatever name you set).
 3. **Open the control panel:** on your phone/laptop, join WiFi `DuckyESP32`
    (password `quack1234`) and browse to **http://192.168.4.1**.
-4. The page shows a green **connected** badge once the target is paired. Paste a
-   payload (or load one of the [examples](payloads/)), then press **Run**. You
-   can also **Save** payloads to the board's flash and run them later.
+
+## The web UI
+
+The control panel is a single page with a navbar of three tabs:
+
+- **Scripts** — paste a DuckyScript into the box and press **Go** to run it
+  immediately. Below that is a **preset library** grouped by category
+  (Demos, YouTube & Media, Sounds, Pranks, Utilities, System); each preset has
+  **Run** (execute now) and **Load** (drop it into the editor to tweak). Your
+  own **saved payloads** also appear here with Run / Edit / Del.
+- **Connection** — live status: BLE connected badge, the Bluetooth pairing
+  name, the WiFi SSID, the web address, and how many WiFi clients are joined.
+- **Settings** — change the **WiFi SSID/password** and the **Bluetooth name**
+  (saved to flash; the board reboots to apply them), plus **theme** (dark/light)
+  and **accent color** for the UI.
+
+The green **connected** badge appears once the target is paired over Bluetooth.
 
 ## Configuration
 
-Edit the constants at the top of [`src/main.cpp`](src/main.cpp):
+Everything is configurable at runtime from the **Settings** tab and stored in
+flash (NVS), so it survives reflashing the same firmware. The values below are
+just the first-boot defaults, defined near the top of
+[`src/main.cpp`](src/main.cpp) in `loadSettings()`:
 
 ```cpp
-static const char *AP_SSID  = "DuckyESP32";     // WiFi network name
-static const char *AP_PASS  = "quack1234";      // must be >= 8 chars
-static const char *BLE_NAME = "ESP32 Keyboard"; // name shown when pairing
+cfgSsid    = prefs.getString("ssid",    "DuckyESP32");
+cfgPass    = prefs.getString("pass",    "quack1234");     // must be >= 8 chars
+cfgBleName = prefs.getString("blename", "ESP32 Keyboard");
 ```
+
+> Changing the SSID or Bluetooth name reboots the board. Rejoin the new WiFi,
+> and if you renamed the Bluetooth device, "forget" the old one on the target
+> and pair the new name.
 
 ## Writing payloads
 
 See the [DuckyScript reference](docs/DUCKYSCRIPT.md) for the supported commands,
-modifiers, and named keys. Example payloads live in [`payloads/`](payloads/):
+modifiers, and named keys.
+
+The **preset library** in the Scripts tab is baked into the firmware (defined in
+`PRESETS_JSON` in [`src/main.cpp`](src/main.cpp)) — add or edit entries there to
+grow it. The categories ship with harmless demos and pranks such as a **fake
+Windows Update** page, rickroll, text-to-speech, console beep melodies, and
+system-info commands.
+
+Standalone example payloads also live in [`payloads/`](payloads/):
 
 - `01-hello-notepad-windows.txt` — opens Notepad and types a message
 - `02-spotlight-note-macos.txt` — opens TextEdit via Spotlight

@@ -6,12 +6,12 @@
  * computer/phone, then push DuckyScript payloads to it from a web UI that the
  * board itself serves over its own WiFi access point.
  *
- * Flow:
- *   1. Board boots, starts a WiFi AP (DuckyESP32) and advertises as a BLE
- *      keyboard ("ESP32 Keyboard").
- *   2. On the target, pair with "ESP32 Keyboard" via Bluetooth settings.
- *   3. On any device, join the WiFi AP and open http://192.168.4.1 to write,
- *      save, and run DuckyScript payloads.
+ * Web UI (http://192.168.4.1) has three tabs:
+ *   - Scripts     : paste a DuckyScript and press Go, browse preset payloads,
+ *                   and manage your own saved payloads.
+ *   - Connection  : live BLE + WiFi status.
+ *   - Settings    : change the WiFi SSID/password, the Bluetooth name, and the
+ *                   UI theme (persisted to flash; network changes auto-reboot).
  *
  * For AUTHORIZED testing/education on hardware you own or have permission to test.
  * -----------------------------------------------------------------------------
@@ -21,21 +21,36 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <LittleFS.h>
+#include <Preferences.h>
 #include <BleKeyboard.h>
 
 // ---------------------------------------------------------------------------
-// Configuration
+// Persistent settings (stored in NVS via Preferences)
 // ---------------------------------------------------------------------------
-static const char *AP_SSID   = "DuckyESP32";     // WiFi network the board hosts
-static const char *AP_PASS   = "quack1234";      // must be >= 8 chars
-static const char *BLE_NAME  = "ESP32 Keyboard"; // name shown when pairing
+Preferences prefs;
+
+String cfgSsid;      // WiFi AP name the board hosts
+String cfgPass;      // WiFi AP password (>= 8 chars)
+String cfgBleName;   // Bluetooth pairing name
+String cfgTheme;     // "dark" | "light"
+String cfgAccent;    // CSS accent color, e.g. "#2563eb"
+
+static void loadSettings() {
+  prefs.begin("ducky", false);
+  cfgSsid    = prefs.getString("ssid",    "DuckyESP32");
+  cfgPass    = prefs.getString("pass",    "quack1234");
+  cfgBleName = prefs.getString("blename", "ESP32 Keyboard");
+  cfgTheme   = prefs.getString("theme",   "dark");
+  cfgAccent  = prefs.getString("accent",  "#2563eb");
+  prefs.end();
+}
 
 // LittleFS layout: saved payloads live at /pl_<name>.txt
 static const char *PL_PREFIX = "/pl_";
 static const char *PL_SUFFIX = ".txt";
 
-BleKeyboard bleKeyboard(BLE_NAME, "Espressif", 100);
-WebServer   server(80);
+BleKeyboard *bleKeyboard = nullptr;   // constructed after settings load
+WebServer    server(80);
 
 uint32_t defaultDelay = 0;   // DEFAULT_DELAY between commands (ms)
 String   lastLine     = "";  // last executed line, for REPEAT
@@ -113,26 +128,24 @@ static void pressCombo(const String &line) {
   }
   if (nt == 0) return;
 
-  // Every token except the last is treated as a modifier.
   for (int i = 0; i < nt - 1; i++) {
     uint8_t m = modifierKey(tok[i]);
-    if (m) bleKeyboard.press(m);
+    if (m) bleKeyboard->press(m);
   }
 
-  // Final token: named key, single character, or a bare modifier (e.g. "GUI").
   String last = tok[nt - 1];
   uint8_t nk = namedKey(last);
   if (nk) {
-    bleKeyboard.press(nk);
+    bleKeyboard->press(nk);
   } else if (last.length() == 1) {
-    bleKeyboard.press((uint8_t)last[0]);
+    bleKeyboard->press((uint8_t)last[0]);
   } else {
     uint8_t m = modifierKey(last);
-    if (m) bleKeyboard.press(m);
+    if (m) bleKeyboard->press(m);
   }
 
   delay(8);
-  bleKeyboard.releaseAll();
+  bleKeyboard->releaseAll();
 }
 
 // Execute a single DuckyScript line.
@@ -147,11 +160,11 @@ static void execLine(const String &raw) {
   String rest = (sp < 0) ? ""   : line.substring(sp + 1);
   String CMD = cmd; CMD.toUpperCase();
 
-  if (CMD == "REM") return;                                   // comment
+  if (CMD == "REM") return;
   if (CMD == "DEFAULT_DELAY" || CMD == "DEFAULTDELAY") { defaultDelay = rest.toInt(); return; }
   if (CMD == "DELAY")     { delay(rest.toInt()); return; }
-  if (CMD == "STRING")    { bleKeyboard.print(rest); return; }
-  if (CMD == "STRINGLN")  { bleKeyboard.print(rest); bleKeyboard.write(KEY_RETURN); return; }
+  if (CMD == "STRING")    { bleKeyboard->print(rest); return; }
+  if (CMD == "STRINGLN")  { bleKeyboard->print(rest); bleKeyboard->write(KEY_RETURN); return; }
   if (CMD == "REPEAT") {
     int n = rest.toInt();
     for (int i = 0; i < n; i++) {
@@ -161,13 +174,12 @@ static void execLine(const String &raw) {
     return;
   }
 
-  // Anything else is a key or modifier combo.
   pressCombo(line);
 }
 
 // Run a full multi-line script.
 static void runScript(const String &script) {
-  if (!bleKeyboard.isConnected()) return;
+  if (!bleKeyboard->isConnected()) return;
 
   int i = 0;
   int n = script.length();
@@ -205,83 +217,286 @@ static String pathFor(const String &name) {
 }
 
 // ---------------------------------------------------------------------------
-// Web UI
+// Preset payload library (baked into firmware, served at /presets).
+// Each script is an array of lines, joined with '\n' in the browser.
+// ---------------------------------------------------------------------------
+static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
+[
+ {"cat":"Demos","items":[
+   {"name":"Hello Notepad (Windows)","desc":"Opens Notepad and types a message",
+    "lines":["DEFAULT_DELAY 40","DELAY 600","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING Hello from an ESP32 over BLE!","ENTER","STRING Keystroke injection demo."]},
+   {"name":"Hello TextEdit (macOS)","desc":"Opens TextEdit via Spotlight and types",
+    "lines":["DEFAULT_DELAY 40","DELAY 600","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1200","STRING Hello from an ESP32 BLE keyboard!","ENTER"]}
+ ]},
+ {"cat":"YouTube & Media","items":[
+   {"name":"Open a YouTube video","desc":"Launches a video in the default browser (edit the URL)",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
+   {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=jfKfPfyJRdk","ENTER"]},
+   {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER","DELAY 5000","STRING f"]}
+ ]},
+ {"cat":"Sounds","items":[
+   {"name":"Beep melody (Windows)","desc":"Plays notes through PowerShell console beeps",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"[console]::beep(523,250);[console]::beep(659,250);[console]::beep(784,250);[console]::beep(1046,400)\"","ENTER"]},
+   {"name":"Text-to-speech (Windows)","desc":"Makes the target speak a phrase",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('You have been ducked')\"","ENTER"]},
+   {"name":"Say something (macOS)","desc":"Uses the built-in 'say' command in Terminal",
+    "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"you have been ducked\"","ENTER"]}
+ ]},
+ {"cat":"Pranks","items":[
+   {"name":"Fake Windows Update","desc":"Opens fakeupdate.net fullscreen (harmless prank page)",
+    "lines":["DELAY 800","GUI r","DELAY 400","STRING https://fakeupdate.net/win10ug/","ENTER","DELAY 3500","STRING f"]},
+   {"name":"Rickroll","desc":"Opens the classic video in the browser",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
+   {"name":"Endless Notepad note","desc":"Opens Notepad and repeats a line 20 times",
+    "lines":["DEFAULT_DELAY 30","DELAY 700","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING You have been ducked! ","REPEAT 20"]},
+   {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
+    "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]}
+ ]},
+ {"cat":"Utilities","items":[
+   {"name":"Open Calculator (Windows)","desc":"Launches calc.exe",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING calc","ENTER"]},
+   {"name":"Lock the workstation","desc":"Win+L locks the screen",
+    "lines":["DELAY 500","GUI l"]},
+   {"name":"Open a website","desc":"Opens a URL in the default browser (edit it)",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://example.com","ENTER"]}
+ ]},
+ {"cat":"System","items":[
+   {"name":"Open Task Manager (Windows)","desc":"Ctrl+Shift+Esc",
+    "lines":["DELAY 500","CTRL SHIFT ESC"]},
+   {"name":"systeminfo (Windows)","desc":"Prints system info in a command prompt",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING systeminfo","ENTER"]},
+   {"name":"ipconfig (Windows)","desc":"Shows the network configuration",
+    "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING ipconfig /all","ENTER"]}
+ ]}
+]
+)PRESETS";
+
+// ---------------------------------------------------------------------------
+// Web UI (single page, navbar with Scripts / Connection / Settings tabs)
 // ---------------------------------------------------------------------------
 static const char INDEX_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ESP32 BLE Ducky</title>
 <style>
- body{font-family:system-ui,sans-serif;background:#0f1216;color:#e6e6e6;margin:0;padding:16px}
- h1{font-size:1.2rem;margin:0 0 4px}
- .sub{color:#8b98a5;font-size:.8rem;margin-bottom:12px}
- #status{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:600}
+ :root{--accent:#2563eb;--bg:#0f1216;--card:#161b22;--line:#242a32;--text:#e6e6e6;--muted:#8b98a5}
+ [data-theme=light]{--bg:#f5f6f8;--card:#fff;--line:#e2e5e9;--text:#1b2129;--muted:#5b6470}
+ *{box-sizing:border-box}
+ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0}
+ header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px}
+ header h1{font-size:1rem;margin:0 0 8px}
+ nav{display:flex;gap:6px}
+ nav button{flex:1;background:transparent;color:var(--muted);border:1px solid var(--line);
+   border-radius:8px;padding:8px;font-size:.85rem;cursor:pointer}
+ nav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+ main{padding:16px;max-width:760px;margin:0 auto}
+ .tab{display:none}.tab.show{display:block}
+ textarea{width:100%;height:200px;background:var(--card);color:var(--text);border:1px solid var(--line);
+   border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}
+ input,select{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;
+   padding:9px;font-size:.85rem;width:100%}
+ label{display:block;font-size:.78rem;color:var(--muted);margin:12px 0 4px}
+ button.act{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 16px;
+   font-size:.9rem;cursor:pointer;margin-top:10px}
+ button.sec{background:var(--line);color:var(--text)}
+ button.small{padding:5px 10px;font-size:.75rem;border:0;border-radius:6px;cursor:pointer;margin-left:6px}
+ button.small.run{background:var(--accent);color:#fff}button.small.sec{background:var(--line);color:var(--text)}
+ button.small.dan{background:#7f1d1d;color:#fff}
+ .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:600}
  .on{background:#12351f;color:#4ade80}.off{background:#3a1417;color:#f87171}
- textarea{width:100%;height:220px;background:#161b22;color:#e6e6e6;border:1px solid #2a2f37;
-   border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:.85rem;box-sizing:border-box}
- button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:.85rem;
-   cursor:pointer;margin:6px 6px 0 0}
- button.sec{background:#2a2f37}button.dan{background:#7f1d1d}
- input{background:#161b22;color:#e6e6e6;border:1px solid #2a2f37;border-radius:8px;padding:8px;font-size:.85rem}
- ul{list-style:none;padding:0}li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1f242b}
- li span{flex:1;font-family:ui-monospace,monospace;font-size:.85rem}
- .small{padding:4px 10px;font-size:.75rem}
+ .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}
+ .catlabel{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 6px}
+ .preset{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+ .preset:last-child{border-bottom:0}
+ .preset .n{font-weight:600;font-size:.88rem}.preset .d{font-size:.75rem;color:var(--muted)}
+ .preset .meta{flex:1;min-width:0}
+ .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+ .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+ .kv:last-child{border-bottom:0}.kv .k{color:var(--muted)}
+ .note{font-size:.75rem;color:var(--muted);margin-top:8px}
 </style></head><body>
-<h1>ESP32 BLE Rubber Ducky</h1>
-<div class="sub">BLE status: <span id="status" class="off">checking...</span> &middot; pair with "ESP32 Keyboard" first</div>
-<textarea id="script" placeholder="REM Example&#10;DELAY 500&#10;GUI r&#10;DELAY 300&#10;STRING notepad&#10;ENTER"></textarea>
-<div>
- <button onclick="run()">&#9654; Run</button>
- <input id="name" placeholder="payload name" size="14">
- <button class="sec" onclick="save()">Save</button>
- <button class="sec" onclick="load()">Load into editor</button>
-</div>
-<h1 style="margin-top:20px;font-size:1rem">Saved payloads</h1>
-<ul id="list"></ul>
+<header>
+ <h1>ESP32 BLE Rubber Ducky</h1>
+ <nav>
+  <button data-tab="scripts" class="active">Scripts</button>
+  <button data-tab="connection">Connection</button>
+  <button data-tab="settings">Settings</button>
+ </nav>
+</header>
+<main>
+
+ <section id="scripts" class="tab show">
+  <div class="card">
+   <div class="row"><b style="font-size:.9rem">Run a script</b>
+     <span id="badge" class="badge off" style="margin-left:auto">checking…</span></div>
+   <textarea id="script" placeholder="REM Paste DuckyScript here&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER"></textarea>
+   <div class="row">
+     <button class="act" onclick="go()">&#9654; Go</button>
+     <input id="pname" placeholder="save as…" style="max-width:160px">
+     <button class="act sec" onclick="save()">Save</button>
+   </div>
+   <div class="note">Keystrokes go to the paired Bluetooth target. Pair with the board first (see Connection).</div>
+  </div>
+
+  <div id="saved"></div>
+  <div id="presets"></div>
+ </section>
+
+ <section id="connection" class="tab">
+  <div class="card">
+   <div class="kv"><span class="k">BLE status</span><span id="c_ble" class="badge off">…</span></div>
+   <div class="kv"><span class="k">Bluetooth name</span><span id="c_bt">…</span></div>
+   <div class="kv"><span class="k">WiFi SSID</span><span id="c_ssid">…</span></div>
+   <div class="kv"><span class="k">Web UI address</span><span id="c_ip">…</span></div>
+   <div class="kv"><span class="k">WiFi clients</span><span id="c_cli">…</span></div>
+  </div>
+  <div class="note">To use the ducky: on the target device, open Bluetooth settings and pair with the
+   Bluetooth name shown above. The badge turns green once it connects.</div>
+ </section>
+
+ <section id="settings" class="tab">
+  <div class="card">
+   <b style="font-size:.9rem">Network</b>
+   <label>WiFi SSID</label><input id="s_ssid">
+   <label>WiFi password (min 8 chars)</label><input id="s_pass">
+   <label>Bluetooth name</label><input id="s_ble">
+   <div class="note">Saving network changes reboots the board; you'll need to rejoin the WiFi and re-pair.</div>
+   <button class="act" onclick="saveNet()">Save &amp; reboot</button>
+  </div>
+  <div class="card">
+   <b style="font-size:.9rem">Appearance</b>
+   <label>Theme</label>
+   <select id="s_theme"><option value="dark">Dark</option><option value="light">Light</option></select>
+   <label>Accent color</label><input id="s_accent" type="color" style="height:42px">
+   <button class="act" onclick="saveUi()">Save appearance</button>
+  </div>
+ </section>
+
+</main>
 <script>
- async function poll(){
-   try{let r=await fetch('/status');let j=await r.json();
-     let s=document.getElementById('status');
-     s.textContent=j.connected?'connected':'not connected';
-     s.className=j.connected?'on':'off';}catch(e){}
- }
- setInterval(poll,1500);poll();
- async function run(){await fetch('/run',{method:'POST',body:document.getElementById('script').value});}
- async function save(){let n=document.getElementById('name').value||'payload';
-   await fetch('/save?name='+encodeURIComponent(n),{method:'POST',body:document.getElementById('script').value});refresh();}
- async function load(){let n=document.getElementById('name').value;if(!n)return;
-   let r=await fetch('/load?name='+encodeURIComponent(n));document.getElementById('script').value=await r.text();}
- async function refresh(){let r=await fetch('/list');let arr=await r.json();
-   let ul=document.getElementById('list');ul.innerHTML='';
-   arr.forEach(n=>{let li=document.createElement('li');
-     li.innerHTML='<span>'+n+'</span>'+
-       '<button class="small" onclick="runFile(\''+n+'\')">Run</button>'+
-       '<button class="small sec" onclick="pick(\''+n+'\')">Edit</button>'+
-       '<button class="small dan" onclick="del(\''+n+'\')">Del</button>';
-     ul.appendChild(li);});}
+ let CFG={};
+ function $(id){return document.getElementById(id);}
+ // tabs
+ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('show'));
+   b.classList.add('active');$(b.dataset.tab).classList.add('show');
+ });
+ function applyTheme(){document.documentElement.dataset.theme=CFG.theme||'dark';
+   document.documentElement.style.setProperty('--accent',CFG.accent||'#2563eb');}
+ async function go(){await fetch('/run',{method:'POST',body:$('script').value});}
+ async function save(){let n=$('pname').value||'payload';
+   await fetch('/save?name='+encodeURIComponent(n),{method:'POST',body:$('script').value});loadSaved();}
+ async function runScriptText(t){await fetch('/run',{method:'POST',body:t});}
+ async function loadPresets(){
+   let arr=await (await fetch('/presets')).json();let h='';
+   arr.forEach(g=>{h+='<div class="catlabel">'+g.cat+'</div><div class="card">';
+     g.items.forEach((p,i)=>{let s=p.lines.join('\n').replace(/"/g,'&quot;');
+       h+='<div class="preset"><div class="meta"><div class="n">'+p.name+'</div><div class="d">'+p.desc+'</div></div>'+
+          '<button class="small run" onclick="runScriptText(this.dataset.s)" data-s="'+s+'">Run</button>'+
+          '<button class="small sec" onclick="$(\'script\').value=this.dataset.s" data-s="'+s+'">Load</button></div>';});
+     h+='</div>';});
+   $('presets').innerHTML=h;}
+ async function loadSaved(){
+   let arr=await (await fetch('/list')).json();
+   if(!arr.length){$('saved').innerHTML='';return;}
+   let h='<div class="catlabel">Your saved payloads</div><div class="card">';
+   arr.forEach(n=>{h+='<div class="preset"><div class="meta"><div class="n">'+n+'</div></div>'+
+     '<button class="small run" onclick="runFile(\''+n+'\')">Run</button>'+
+     '<button class="small sec" onclick="editFile(\''+n+'\')">Edit</button>'+
+     '<button class="small dan" onclick="delFile(\''+n+'\')">Del</button></div>';});
+   h+='</div>';$('saved').innerHTML=h;}
  async function runFile(n){await fetch('/runfile?name='+encodeURIComponent(n),{method:'POST'});}
- async function pick(n){document.getElementById('name').value=n;load();}
- async function del(n){await fetch('/delete?name='+encodeURIComponent(n),{method:'POST'});refresh();}
- refresh();
+ async function editFile(n){$('pname').value=n;$('script').value=await (await fetch('/load?name='+encodeURIComponent(n))).text();
+   document.querySelector('nav button[data-tab=scripts]').click();window.scrollTo(0,0);}
+ async function delFile(n){await fetch('/delete?name='+encodeURIComponent(n),{method:'POST'});loadSaved();}
+ async function poll(){try{let j=await (await fetch('/status')).json();
+   let up=j.connected;
+   let b=$('badge');b.textContent=up?'connected':'not connected';b.className='badge '+(up?'on':'off');
+   let c=$('c_ble');c.textContent=up?'connected':'not connected';c.className='badge '+(up?'on':'off');
+   $('c_bt').textContent=j.blename;$('c_ssid').textContent=j.ssid;$('c_ip').textContent='http://'+j.ip;
+   $('c_cli').textContent=j.clients;}catch(e){}}
+ async function loadCfg(){CFG=await (await fetch('/settings')).json();applyTheme();
+   $('s_ssid').value=CFG.ssid;$('s_pass').value=CFG.pass;$('s_ble').value=CFG.blename;
+   $('s_theme').value=CFG.theme;$('s_accent').value=CFG.accent;}
+ async function saveNet(){let p=$('s_pass').value;
+   if(p.length<8){alert('WiFi password must be at least 8 characters.');return;}
+   let body='ssid='+encodeURIComponent($('s_ssid').value)+'&pass='+encodeURIComponent(p)+
+            '&blename='+encodeURIComponent($('s_ble').value);
+   await fetch('/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+   alert('Saved. The board is rebooting — rejoin the WiFi and re-pair Bluetooth.');}
+ async function saveUi(){
+   let body='theme='+encodeURIComponent($('s_theme').value)+'&accent='+encodeURIComponent($('s_accent').value);
+   await fetch('/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+   CFG.theme=$('s_theme').value;CFG.accent=$('s_accent').value;applyTheme();}
+ loadCfg();loadPresets();loadSaved();poll();setInterval(poll,1500);
 </script></body></html>
 )HTML";
 
-static void handleRoot()   { server.send_P(200, "text/html", INDEX_HTML); }
+// ---------------------------------------------------------------------------
+// HTTP handlers
+// ---------------------------------------------------------------------------
+static void handleRoot()    { server.send_P(200, "text/html", INDEX_HTML); }
+static void handlePresets() { server.send_P(200, "application/json", PRESETS_JSON); }
+
 static void handleStatus() {
-  server.send(200, "application/json",
-              String("{\"connected\":") + (bleKeyboard.isConnected() ? "true" : "false") + "}");
+  String j = "{";
+  j += "\"connected\":" + String(bleKeyboard->isConnected() ? "true" : "false");
+  j += ",\"ssid\":\"" + cfgSsid + "\"";
+  j += ",\"blename\":\"" + cfgBleName + "\"";
+  j += ",\"ip\":\"" + WiFi.softAPIP().toString() + "\"";
+  j += ",\"clients\":" + String(WiFi.softAPgetStationNum());
+  j += "}";
+  server.send(200, "application/json", j);
 }
+
+static void handleGetSettings() {
+  String j = "{";
+  j += "\"ssid\":\""    + cfgSsid    + "\",";
+  j += "\"pass\":\""    + cfgPass    + "\",";
+  j += "\"blename\":\"" + cfgBleName + "\",";
+  j += "\"theme\":\""   + cfgTheme   + "\",";
+  j += "\"accent\":\""  + cfgAccent  + "\"}";
+  server.send(200, "application/json", j);
+}
+
+static void handlePostSettings() {
+  bool rebootNeeded = false;
+  prefs.begin("ducky", false);
+
+  if (server.hasArg("ssid")) {
+    String v = server.arg("ssid");
+    if (v.length() && v != cfgSsid) { prefs.putString("ssid", v); rebootNeeded = true; }
+  }
+  if (server.hasArg("pass")) {
+    String v = server.arg("pass");
+    if (v.length() >= 8 && v != cfgPass) { prefs.putString("pass", v); rebootNeeded = true; }
+  }
+  if (server.hasArg("blename")) {
+    String v = server.arg("blename");
+    if (v.length() && v != cfgBleName) { prefs.putString("blename", v); rebootNeeded = true; }
+  }
+  if (server.hasArg("theme"))  { prefs.putString("theme",  server.arg("theme"));  cfgTheme  = server.arg("theme"); }
+  if (server.hasArg("accent")) { prefs.putString("accent", server.arg("accent")); cfgAccent = server.arg("accent"); }
+  prefs.end();
+
+  server.send(200, "application/json",
+              String("{\"ok\":true,\"reboot\":") + (rebootNeeded ? "true" : "false") + "}");
+
+  if (rebootNeeded) { delay(400); ESP.restart(); }
+}
+
 static void handleRun() {
   String body = server.arg("plain");
-  server.send(200, "text/plain", bleKeyboard.isConnected() ? "running" : "not connected");
+  server.send(200, "text/plain", bleKeyboard->isConnected() ? "running" : "not connected");
   runScript(body);
 }
 static void handleSave() {
-  String name = server.arg("name");
-  String body = server.arg("plain");
-  File f = LittleFS.open(pathFor(name), "w");
+  File f = LittleFS.open(pathFor(server.arg("name")), "w");
   if (!f) { server.send(500, "text/plain", "write failed"); return; }
-  f.print(body);
+  f.print(server.arg("plain"));
   f.close();
   server.send(200, "text/plain", "saved");
 }
@@ -300,7 +515,7 @@ static void handleRunFile() {
   if (!f) { server.send(404, "text/plain", "not found"); return; }
   String body = f.readString();
   f.close();
-  server.send(200, "text/plain", bleKeyboard.isConnected() ? "running" : "not connected");
+  server.send(200, "text/plain", bleKeyboard->isConnected() ? "running" : "not connected");
   runScript(body);
 }
 static void handleList() {
@@ -308,7 +523,7 @@ static void handleList() {
   File root = LittleFS.open("/");
   File file = root.openNextFile();
   bool first = true;
-  String prefix = String(PL_PREFIX).substring(1); // "pl_" without leading slash
+  String prefix = String(PL_PREFIX).substring(1); // "pl_"
   while (file) {
     String fn = String(file.name());
     int slash = fn.lastIndexOf('/');
@@ -332,19 +547,23 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
-  if (!LittleFS.begin(true)) {
-    Serial.println("[FS] LittleFS mount failed");
-  }
+  loadSettings();
+
+  if (!LittleFS.begin(true)) Serial.println("[FS] LittleFS mount failed");
 
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID, AP_PASS);
-  Serial.printf("[WiFi] AP '%s'  http://%s\n", AP_SSID, WiFi.softAPIP().toString().c_str());
+  WiFi.softAP(cfgSsid.c_str(), cfgPass.c_str());
+  Serial.printf("[WiFi] AP '%s'  http://%s\n", cfgSsid.c_str(), WiFi.softAPIP().toString().c_str());
 
-  bleKeyboard.begin();
-  Serial.printf("[BLE] advertising as '%s'\n", BLE_NAME);
+  bleKeyboard = new BleKeyboard(cfgBleName.c_str(), "Espressif", 100);
+  bleKeyboard->begin();
+  Serial.printf("[BLE] advertising as '%s'\n", cfgBleName.c_str());
 
   server.on("/",        HTTP_GET,  handleRoot);
   server.on("/status",  HTTP_GET,  handleStatus);
+  server.on("/presets", HTTP_GET,  handlePresets);
+  server.on("/settings",HTTP_GET,  handleGetSettings);
+  server.on("/settings",HTTP_POST, handlePostSettings);
   server.on("/list",    HTTP_GET,  handleList);
   server.on("/load",    HTTP_GET,  handleLoad);
   server.on("/run",     HTTP_POST, handleRun);

@@ -218,59 +218,110 @@ static String pathFor(const String &name) {
 
 // ---------------------------------------------------------------------------
 // Preset payload library (baked into firmware, served at /presets).
+// Split by OS ("windows" / "mac"); the UI's OS toggle picks which set to show.
 // Each script is an array of lines, joined with '\n' in the browser.
+//
+// Windows presets use the Run dialog (GUI r) + cmd/powershell.
+// macOS presets use Spotlight (GUI SPACE) + Terminal commands (open/say/afplay),
+// since macOS has no Run dialog and no PowerShell.
 // ---------------------------------------------------------------------------
 static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
-[
- {"cat":"Demos","items":[
-   {"name":"Hello Notepad (Windows)","desc":"Opens Notepad and types a message",
-    "lines":["DEFAULT_DELAY 40","DELAY 600","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING Hello from an ESP32 over BLE!","ENTER","STRING Keystroke injection demo."]},
-   {"name":"Hello TextEdit (macOS)","desc":"Opens TextEdit via Spotlight and types",
-    "lines":["DEFAULT_DELAY 40","DELAY 600","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1200","STRING Hello from an ESP32 BLE keyboard!","ENTER"]}
- ]},
- {"cat":"YouTube & Media","items":[
-   {"name":"Open a YouTube video","desc":"Launches a video in the default browser (edit the URL)",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
-   {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=jfKfPfyJRdk","ENTER"]},
-   {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER","DELAY 5000","STRING f"]}
- ]},
- {"cat":"Sounds","items":[
-   {"name":"Beep melody (Windows)","desc":"Plays notes through PowerShell console beeps",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"[console]::beep(523,250);[console]::beep(659,250);[console]::beep(784,250);[console]::beep(1046,400)\"","ENTER"]},
-   {"name":"Text-to-speech (Windows)","desc":"Makes the target speak a phrase",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('You have been ducked')\"","ENTER"]},
-   {"name":"Say something (macOS)","desc":"Uses the built-in 'say' command in Terminal",
-    "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"you have been ducked\"","ENTER"]}
- ]},
- {"cat":"Pranks","items":[
-   {"name":"Fake Windows Update","desc":"Opens fakeupdate.net fullscreen (harmless prank page)",
-    "lines":["DELAY 800","GUI r","DELAY 400","STRING https://fakeupdate.net/win10ug/","ENTER","DELAY 3500","STRING f"]},
-   {"name":"Rickroll","desc":"Opens the classic video in the browser",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
-   {"name":"Endless Notepad note","desc":"Opens Notepad and repeats a line 20 times",
-    "lines":["DEFAULT_DELAY 30","DELAY 700","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING You have been ducked! ","REPEAT 20"]},
-   {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
-    "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]}
- ]},
- {"cat":"Utilities","items":[
-   {"name":"Open Calculator (Windows)","desc":"Launches calc.exe",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING calc","ENTER"]},
-   {"name":"Lock the workstation","desc":"Win+L locks the screen",
-    "lines":["DELAY 500","GUI l"]},
-   {"name":"Open a website","desc":"Opens a URL in the default browser (edit it)",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING https://example.com","ENTER"]}
- ]},
- {"cat":"System","items":[
-   {"name":"Open Task Manager (Windows)","desc":"Ctrl+Shift+Esc",
-    "lines":["DELAY 500","CTRL SHIFT ESC"]},
-   {"name":"systeminfo (Windows)","desc":"Prints system info in a command prompt",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING systeminfo","ENTER"]},
-   {"name":"ipconfig (Windows)","desc":"Shows the network configuration",
-    "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING ipconfig /all","ENTER"]}
- ]}
-]
+{
+ "windows":[
+  {"cat":"Demos","items":[
+    {"name":"Hello Notepad","desc":"Opens Notepad and types a message",
+     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING Hello from an ESP32 over BLE!","ENTER","STRING Keystroke injection demo."]}
+  ]},
+  {"cat":"YouTube & Media","items":[
+    {"name":"Open a YouTube video","desc":"Launches a video in the default browser (edit the URL)",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
+    {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=jfKfPfyJRdk","ENTER"]},
+    {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER","DELAY 5000","STRING f"]}
+  ]},
+  {"cat":"Sounds","items":[
+    {"name":"Beep melody","desc":"Plays notes through PowerShell console beeps",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"[console]::beep(523,250);[console]::beep(659,250);[console]::beep(784,250);[console]::beep(1046,400)\"","ENTER"]},
+    {"name":"Text-to-speech","desc":"Makes the target speak a phrase",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('You have been ducked')\"","ENTER"]}
+  ]},
+  {"cat":"Pranks","items":[
+    {"name":"Fake Windows Update","desc":"Opens fakeupdate.net fullscreen (harmless prank page)",
+     "lines":["DELAY 800","GUI r","DELAY 400","STRING https://fakeupdate.net/win10ug/","ENTER","DELAY 3500","STRING f"]},
+    {"name":"Rickroll","desc":"Opens the classic video in the browser",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
+    {"name":"Endless Notepad note","desc":"Opens Notepad and repeats a line 20 times",
+     "lines":["DEFAULT_DELAY 30","DELAY 700","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING You have been ducked! ","REPEAT 20"]},
+    {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
+     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]}
+  ]},
+  {"cat":"Utilities","items":[
+    {"name":"Open Calculator","desc":"Launches calc.exe",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING calc","ENTER"]},
+    {"name":"Lock the workstation","desc":"Win+L locks the screen",
+     "lines":["DELAY 500","GUI l"]},
+    {"name":"Open a website","desc":"Opens a URL in the default browser (edit it)",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://example.com","ENTER"]}
+  ]},
+  {"cat":"System","items":[
+    {"name":"Open Task Manager","desc":"Ctrl+Shift+Esc",
+     "lines":["DELAY 500","CTRL SHIFT ESC"]},
+    {"name":"systeminfo","desc":"Prints system info in a command prompt",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING systeminfo","ENTER"]},
+    {"name":"ipconfig","desc":"Shows the network configuration",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING ipconfig /all","ENTER"]}
+  ]}
+ ],
+ "mac":[
+  {"cat":"Demos","items":[
+    {"name":"Hello TextEdit","desc":"Opens TextEdit via Spotlight and types a message",
+     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING Hello from an ESP32 BLE keyboard!","ENTER","STRING Keystroke injection demo."]}
+  ]},
+  {"cat":"YouTube & Media","items":[
+    {"name":"Open a YouTube video","desc":"Uses Terminal 'open' to launch the default browser (edit the URL)",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER"]},
+    {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=jfKfPfyJRdk\"","ENTER"]},
+    {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER","DELAY 5000","STRING f"]}
+  ]},
+  {"cat":"Sounds","items":[
+    {"name":"Text-to-speech","desc":"Uses the built-in 'say' command",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"you have been ducked\"","ENTER"]},
+    {"name":"System beeps","desc":"Plays three system alert beeps via osascript",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING osascript -e 'beep 3'","ENTER"]},
+    {"name":"Play a sound","desc":"Plays a built-in macOS sound with afplay",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING afplay /System/Library/Sounds/Glass.aiff","ENTER"]}
+  ]},
+  {"cat":"Pranks","items":[
+    {"name":"Fake Update screen","desc":"Opens fakeupdate.net fullscreen (harmless prank page)",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://fakeupdate.net/mac/\"","ENTER","DELAY 3500","CTRL GUI f"]},
+    {"name":"Rickroll","desc":"Opens the classic video in the browser",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER"]},
+    {"name":"Endless TextEdit note","desc":"Opens TextEdit and repeats a line 20 times",
+     "lines":["DEFAULT_DELAY 30","DELAY 700","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING You have been ducked! ","REPEAT 20"]},
+    {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
+     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]}
+  ]},
+  {"cat":"Utilities","items":[
+    {"name":"Open Calculator","desc":"Launches Calculator via Spotlight",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Calculator","ENTER"]},
+    {"name":"Lock the screen","desc":"Cmd+Ctrl+Q locks macOS",
+     "lines":["DELAY 500","CTRL GUI q"]},
+    {"name":"Open a website","desc":"Opens a URL via Terminal (edit it)",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://example.com\"","ENTER"]}
+  ]},
+  {"cat":"System","items":[
+    {"name":"Open Activity Monitor","desc":"macOS equivalent of Task Manager",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Activity Monitor","ENTER"]},
+    {"name":"System info","desc":"Prints hardware info in Terminal",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING system_profiler SPHardwareDataType","ENTER"]},
+    {"name":"Network info","desc":"Shows network configuration with ifconfig",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING ifconfig","ENTER"]}
+  ]}
+ ]
+}
 )PRESETS";
 
 // ---------------------------------------------------------------------------
@@ -341,6 +392,11 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
   </div>
 
   <div id="saved"></div>
+  <div class="row" style="margin:14px 0 0">
+    <span class="catlabel" style="margin:0 4px 0 0">Presets for</span>
+    <button id="os_win" class="small run" onclick="setOS('windows')">Windows</button>
+    <button id="os_mac" class="small sec" onclick="setOS('mac')">macOS</button>
+  </div>
   <div id="presets"></div>
  </section>
 
@@ -390,9 +446,14 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
  async function save(){let n=$('pname').value||'payload';
    await fetch('/save?name='+encodeURIComponent(n),{method:'POST',body:$('script').value});loadSaved();}
  async function runScriptText(t){await fetch('/run',{method:'POST',body:t});}
- async function loadPresets(){
-   let arr=await (await fetch('/presets')).json();let h='';
-   arr.forEach(g=>{h+='<div class="catlabel">'+g.cat+'</div><div class="card">';
+ let PRESETS={};let OS=localStorage.getItem('os')||'windows';
+ async function loadPresets(){PRESETS=await (await fetch('/presets')).json();renderPresets();}
+ function setOS(os){OS=os;localStorage.setItem('os',os);renderPresets();}
+ function renderPresets(){
+   $('os_win').className='small '+(OS=='windows'?'run':'sec');
+   $('os_mac').className='small '+(OS=='mac'?'run':'sec');
+   let groups=PRESETS[OS]||[];let h='';
+   groups.forEach(g=>{h+='<div class="catlabel">'+g.cat+'</div><div class="card">';
      g.items.forEach((p,i)=>{let s=p.lines.join('\n').replace(/"/g,'&quot;');
        h+='<div class="preset"><div class="meta"><div class="n">'+p.name+'</div><div class="d">'+p.desc+'</div></div>'+
           '<button class="small run" onclick="runScriptText(this.dataset.s)" data-s="'+s+'">Run</button>'+

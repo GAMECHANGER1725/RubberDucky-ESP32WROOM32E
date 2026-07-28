@@ -101,10 +101,13 @@ pio device monitor       # 115200 baud — shows the AP IP and BLE status
 The control panel is a single page with a navbar of three tabs:
 
 - **Scripts** — paste a DuckyScript into the box and press **Go** to run it
-  immediately. Below that is a **preset library** grouped by category
-  (Demos, YouTube & Media, Sounds, Pranks, Utilities, System); each preset has
-  **Run** (execute now) and **Load** (drop it into the editor to tweak). Your
-  own **saved payloads** also appear here with Run / Edit / Del.
+  immediately. Below that is a **preset library** with a **Windows / macOS
+  toggle** — the presets are OS-specific (Windows uses the Run dialog +
+  `cmd`/PowerShell; macOS uses Spotlight + Terminal `open`/`say`/`afplay`), so
+  pick the toggle that matches your target. Presets are grouped by category
+  (Demos, YouTube & Media, Sounds, Pranks, Utilities, System); each has **Run**
+  (execute now) and **Load** (drop it into the editor to tweak). Your own
+  **saved payloads** also appear here with Run / Edit / Del.
 - **Connection** — live status: BLE connected badge, the Bluetooth pairing
   name, the WiFi SSID, the web address, and how many WiFi clients are joined.
 - **Settings** — change the **WiFi SSID/password** and the **Bluetooth name**
@@ -136,10 +139,10 @@ See the [DuckyScript reference](docs/DUCKYSCRIPT.md) for the supported commands,
 modifiers, and named keys.
 
 The **preset library** in the Scripts tab is baked into the firmware (defined in
-`PRESETS_JSON` in [`src/main.cpp`](src/main.cpp)) — add or edit entries there to
-grow it. The categories ship with harmless demos and pranks such as a **fake
-Windows Update** page, rickroll, text-to-speech, console beep melodies, and
-system-info commands.
+`PRESETS_JSON` in [`src/main.cpp`](src/main.cpp)), split into `"windows"` and
+`"mac"` sets — add or edit entries in either to grow it. Both ship with harmless
+demos and pranks such as a **fake update** page, rickroll, text-to-speech, sound
+effects, and system-info commands, each written with that OS's native commands.
 
 Standalone example payloads also live in [`payloads/`](payloads/):
 

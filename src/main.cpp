@@ -227,149 +227,992 @@ static String pathFor(const String &name) {
 // ---------------------------------------------------------------------------
 static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
 {
- "windows":[
-  {"cat":"Demos","items":[
-    {"name":"Hello Notepad","desc":"Opens Notepad and types a message",
-     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING Hello from an ESP32 over BLE!","ENTER","STRING Keystroke injection demo."]},
-    {"name":"ASCII duck in Notepad","desc":"Types a little ASCII-art duck",
-     "lines":["DEFAULT_DELAY 25","DELAY 700","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING   __","ENTER","STRING <(o )___","ENTER","STRING  ( ._> /","ENTER","STRING   `---'","ENTER","STRING You have been ducked!"]}
-  ]},
-  {"cat":"YouTube & Media","items":[
-    {"name":"Open a YouTube video","desc":"Launches a video in the default browser (edit the URL)",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
-    {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=jfKfPfyJRdk","ENTER"]},
-    {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER","DELAY 5000","STRING f"]},
-    {"name":"Pointer Pointer","desc":"Opens the silly pointerpointer.com site",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING http://pointerpointer.com","ENTER"]}
-  ]},
-  {"cat":"Sounds","items":[
-    {"name":"Beep melody","desc":"Plays notes through PowerShell console beeps",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"[console]::beep(523,250);[console]::beep(659,250);[console]::beep(784,250);[console]::beep(1046,400)\"","ENTER"]},
-    {"name":"Text-to-speech","desc":"Makes the target speak a phrase",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('You have been ducked')\"","ENTER"]},
-    {"name":"Speak the time","desc":"Announces the current time out loud",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('The time is '+(Get-Date -Format t))\"","ENTER"]}
-  ]},
-  {"cat":"Pranks","items":[
-    {"name":"Fake Windows Update","desc":"Opens fakeupdate.net fullscreen (harmless prank page)",
-     "lines":["DELAY 800","GUI r","DELAY 400","STRING https://fakeupdate.net/win10ug/","ENTER","DELAY 3500","STRING f"]},
-    {"name":"Rickroll","desc":"Opens the classic video in the browser",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER"]},
-    {"name":"Endless Notepad note","desc":"Opens Notepad and repeats a line 20 times",
-     "lines":["DEFAULT_DELAY 30","DELAY 700","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING You have been ducked! ","REPEAT 20"]},
-    {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
-     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]},
-    {"name":"Popup message","desc":"Shows a harmless alert box via mshta",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING mshta \"javascript:alert('You have been ducked!');close()\"","ENTER"]},
-    {"name":"Matrix console","desc":"Green cmd window scrolling a directory tree",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING color 0a","ENTER","STRING tree","ENTER"]},
-    {"name":"Show the desktop","desc":"Win+D minimizes everything",
-     "lines":["DELAY 500","GUI d"]},
-    {"name":"Scary red terminal","desc":"Red cmd window with a cheeky message",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING color 0c","ENTER","STRING echo You have been ducked!","ENTER","STRING pause","ENTER"]}
-  ]},
-  {"cat":"Utilities","items":[
-    {"name":"Open Calculator","desc":"Launches calc.exe",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING calc","ENTER"]},
-    {"name":"Open Paint","desc":"Launches mspaint",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING mspaint","ENTER"]},
-    {"name":"On-Screen Keyboard","desc":"Opens the accessibility keyboard",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING osk","ENTER"]},
-    {"name":"Character Map","desc":"Opens charmap",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING charmap","ENTER"]},
-    {"name":"Magnifier","desc":"Opens the screen magnifier",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING magnify","ENTER"]},
-    {"name":"Snipping Tool","desc":"Opens the screenshot tool",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING snippingtool","ENTER"]},
-    {"name":"Open File Explorer","desc":"Launches Explorer",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING explorer","ENTER"]},
-    {"name":"Open a website","desc":"Opens a URL in the default browser (edit it)",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://example.com","ENTER"]}
-  ]},
-  {"cat":"System","items":[
-    {"name":"Open Task Manager","desc":"Ctrl+Shift+Esc",
-     "lines":["DELAY 500","CTRL SHIFT ESC"]},
-    {"name":"Lock the workstation","desc":"Win+L locks the screen",
-     "lines":["DELAY 500","GUI l"]},
-    {"name":"systeminfo","desc":"Prints system info in a command prompt",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING systeminfo","ENTER"]},
-    {"name":"ipconfig","desc":"Shows the network configuration",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING ipconfig /all","ENTER"]}
-  ]}
+ "windows": [
+  {
+   "cat": "Rickrolls & Music",
+   "items": [
+    {
+     "name": "Classic rickroll",
+     "desc": "Opens the famous video in the browser",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fullscreen rickroll",
+     "desc": "Opens the video and jumps to fullscreen",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "ENTER",
+      "DELAY 5000",
+      "STRING f"
+     ]
+    },
+    {
+     "name": "Max-volume surprise",
+     "desc": "Cranks the volume, then opens the video",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"$w=New-Object -ComObject WScript.Shell;1..50|%{$w.SendKeys([char]175)}\"",
+      "ENTER",
+      "DELAY 400",
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Lofi radio",
+     "desc": "Opens a 24/7 music live stream",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING https://www.youtube.com/watch?v=jfKfPfyJRdk",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Jump Scares & Sounds",
+   "items": [
+    {
+     "name": "Loud alert tones",
+     "desc": "Maxes volume and plays sharp beeps",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"$w=New-Object -ComObject WScript.Shell;1..40|%{$w.SendKeys([char]175)};1..8|%{[console]::beep(1200,180)}\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Creepy whisper",
+     "desc": "Speaks a spooky line out loud",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('I can see you')\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Robot voice",
+     "desc": "Speaks a warning in a robotic voice",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('You should lock your computer')\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Beep melody",
+     "desc": "Plays a short tune",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"[console]::beep(523,250);[console]::beep(659,250);[console]::beep(784,250);[console]::beep(1046,400)\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Single alert sound",
+     "desc": "Plays one system alert",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"[console]::beep(880,400)\"",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Popups & Fake Errors",
+   "items": [
+    {
+     "name": "Single popup",
+     "desc": "Shows one harmless message box",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING mshta \"javascript:alert('Gotcha');close()\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Popup barrage",
+     "desc": "Pops five message boxes in a row",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"Add-Type -AssemblyName System.Windows.Forms;1..5|%{[System.Windows.Forms.MessageBox]::Show('Are you sure?')}\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake critical error",
+     "desc": "Shows a scary-looking error dialog",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.MessageBox]::Show('A critical error occurred. Please contact your administrator.','System Error',0,16)\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake update banner",
+     "desc": "Shows a system-style notification",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.MessageBox]::Show('An update is available.','Software Update')\"",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Screen & Desktop Trolls",
+   "items": [
+    {
+     "name": "Minimize everything",
+     "desc": "Clears the screen to the desktop",
+     "lines": [
+      "DELAY 500",
+      "GUI d"
+     ]
+    },
+    {
+     "name": "Hide desktop icons",
+     "desc": "Makes the desktop icons disappear (reversible)",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"$p='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced';Set-ItemProperty $p HideIcons 1;Stop-Process -Name explorer -Force;Start-Process explorer\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Restore desktop icons",
+     "desc": "Undoes the hide-icons prank",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING powershell -c \"$p='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced';Set-ItemProperty $p HideIcons 0;Stop-Process -Name explorer -Force;Start-Process explorer\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open the screenshot tool",
+     "desc": "Launches the region screenshot capture",
+     "lines": [
+      "DELAY 500",
+      "GUI SHIFT s"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Fake Hacker & Terminal",
+   "items": [
+    {
+     "name": "Matrix rain",
+     "desc": "Green scrolling text in a console",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING cmd",
+      "ENTER",
+      "DELAY 800",
+      "STRING color 0a",
+      "ENTER",
+      "STRING tree",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Hacker typer",
+     "desc": "Opens a fake 'hacking' website",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING https://hackertyper.net",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake breach terminal",
+     "desc": "Red console flashing an access warning",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING cmd",
+      "ENTER",
+      "DELAY 800",
+      "STRING color 0c",
+      "ENTER",
+      "STRING echo ACCESS GRANTED",
+      "ENTER",
+      "STRING echo Downloading files...",
+      "ENTER",
+      "STRING timeout 3",
+      "ENTER",
+      "STRING echo Done.",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake download progress",
+     "desc": "Prints a fake progress readout",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING cmd",
+      "ENTER",
+      "DELAY 800",
+      "STRING echo Installing updates...",
+      "ENTER",
+      "STRING echo 25%",
+      "ENTER",
+      "STRING timeout 1",
+      "ENTER",
+      "STRING echo 60%",
+      "ENTER",
+      "STRING timeout 1",
+      "ENTER",
+      "STRING echo 100% complete",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Typing Trolls",
+   "items": [
+    {
+     "name": "Creepy note",
+     "desc": "Types an unsettling (then reassuring) note",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING notepad",
+      "ENTER",
+      "DEFAULT_DELAY 40",
+      "DELAY 900",
+      "STRING I know what you did last summer.",
+      "ENTER",
+      "STRING ...just kidding. Lock your screen next time!"
+     ]
+    },
+    {
+     "name": "Slow ghost typing",
+     "desc": "Types a message very slowly",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING notepad",
+      "ENTER",
+      "DEFAULT_DELAY 180",
+      "DELAY 900",
+      "STRING is anyone there?"
+     ]
+    },
+    {
+     "name": "Caps Lock troll",
+     "desc": "Toggles Caps Lock repeatedly",
+     "lines": [
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK"
+     ]
+    },
+    {
+     "name": "Repeat note",
+     "desc": "Fills a text editor with a repeated line",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING notepad",
+      "ENTER",
+      "DEFAULT_DELAY 30",
+      "DELAY 900",
+      "STRING look behind you... ",
+      "REPEAT 20"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Apps & Websites",
+   "items": [
+    {
+     "name": "Open Calculator",
+     "desc": "Launches the calculator",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING calc",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open the camera app",
+     "desc": "Opens the webcam app (harmless surprise)",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING microsoft.windows.camera:",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Pointer Pointer",
+     "desc": "Opens the silly pointerpointer.com site",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING http://pointerpointer.com",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open a website",
+     "desc": "Opens a URL in the default browser (edit it)",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING https://example.com",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open a text editor",
+     "desc": "Opens a blank note",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING notepad",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "System",
+   "items": [
+    {
+     "name": "Task list",
+     "desc": "Shows running processes",
+     "lines": [
+      "DELAY 500",
+      "CTRL SHIFT ESC"
+     ]
+    },
+    {
+     "name": "Lock the screen",
+     "desc": "Locks the computer",
+     "lines": [
+      "DELAY 500",
+      "GUI l"
+     ]
+    },
+    {
+     "name": "System info",
+     "desc": "Prints hardware / OS details",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING cmd",
+      "ENTER",
+      "DELAY 800",
+      "STRING systeminfo",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Network info",
+     "desc": "Shows the network configuration",
+     "lines": [
+      "DELAY 700",
+      "GUI r",
+      "DELAY 400",
+      "STRING cmd",
+      "ENTER",
+      "DELAY 800",
+      "STRING ipconfig /all",
+      "ENTER"
+     ]
+    }
+   ]
+  }
  ],
- "mac":[
-  {"cat":"Demos","items":[
-    {"name":"Hello TextEdit","desc":"Opens TextEdit via Spotlight and types a message",
-     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING Hello from an ESP32 BLE keyboard!","ENTER","STRING Keystroke injection demo."]},
-    {"name":"ASCII duck in TextEdit","desc":"Types a little ASCII-art duck",
-     "lines":["DEFAULT_DELAY 25","DELAY 700","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING   __","ENTER","STRING <(o )___","ENTER","STRING  ( ._> /","ENTER","STRING   `---'","ENTER","STRING You have been ducked!"]}
-  ]},
-  {"cat":"YouTube & Media","items":[
-    {"name":"Open a YouTube video","desc":"Uses Terminal 'open' to launch the default browser (edit the URL)",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER"]},
-    {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=jfKfPfyJRdk\"","ENTER"]},
-    {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER","DELAY 5000","STRING f"]},
-    {"name":"Pointer Pointer","desc":"Opens the silly pointerpointer.com site",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"http://pointerpointer.com\"","ENTER"]}
-  ]},
-  {"cat":"Sounds","items":[
-    {"name":"Text-to-speech","desc":"Uses the built-in 'say' command",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"you have been ducked\"","ENTER"]},
-    {"name":"Robot voice","desc":"Speaks in the classic Zarvox robot voice",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say -v Zarvox \"you have been ducked\"","ENTER"]},
-    {"name":"Speak the time","desc":"Announces the current time out loud",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"It is $(date '+%I:%M %p')\"","ENTER"]},
-    {"name":"System beeps","desc":"Plays three system alert beeps via osascript",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING osascript -e 'beep 3'","ENTER"]},
-    {"name":"Play a sound","desc":"Plays a built-in macOS sound with afplay",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING afplay /System/Library/Sounds/Glass.aiff","ENTER"]}
-  ]},
-  {"cat":"Pranks","items":[
-    {"name":"Fake Update screen","desc":"Opens fakeupdate.net fullscreen (harmless prank page)",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://fakeupdate.net/mac/\"","ENTER","DELAY 3500","CTRL GUI f"]},
-    {"name":"Rickroll","desc":"Opens the classic video in the browser",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER"]},
-    {"name":"Endless TextEdit note","desc":"Opens TextEdit and repeats a line 20 times",
-     "lines":["DEFAULT_DELAY 30","DELAY 700","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING You have been ducked! ","REPEAT 20"]},
-    {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
-     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]},
-    {"name":"Popup dialog","desc":"Shows a harmless dialog box via osascript",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING osascript -e 'display dialog \"You have been ducked!\" buttons {\"OK\"} with icon caution'","ENTER"]},
-    {"name":"Notification popup","desc":"Shows a Notification Center banner",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING osascript -e 'display notification \"You have been ducked\" with title \"System Update\"'","ENTER"]},
-    {"name":"Take a screenshot","desc":"Cmd+Shift+3 saves a screenshot to the desktop",
-     "lines":["DELAY 500","GUI SHIFT 3"]},
-    {"name":"Watching you","desc":"Speaks a spooky phrase",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"I am always watching you\"","ENTER"]}
-  ]},
-  {"cat":"Utilities","items":[
-    {"name":"Open Calculator","desc":"Launches Calculator via Spotlight",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Calculator","ENTER"]},
-    {"name":"Open Photo Booth","desc":"Opens the webcam app (harmless surprise)",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Photo Booth","ENTER"]},
-    {"name":"Open Chess","desc":"Launches the built-in Chess game",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Chess","ENTER"]},
-    {"name":"Mission Control","desc":"Ctrl+Up shows all open windows",
-     "lines":["DELAY 500","CTRL UP"]},
-    {"name":"Fullscreen the app","desc":"Ctrl+Cmd+F fullscreens the front window",
-     "lines":["DELAY 500","CTRL GUI f"]},
-    {"name":"Open a website","desc":"Opens a URL via Terminal (edit it)",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://example.com\"","ENTER"]}
-  ]},
-  {"cat":"System","items":[
-    {"name":"Open Activity Monitor","desc":"macOS equivalent of Task Manager",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Activity Monitor","ENTER"]},
-    {"name":"Lock the screen","desc":"Cmd+Ctrl+Q locks macOS",
-     "lines":["DELAY 500","CTRL GUI q"]},
-    {"name":"System info","desc":"Prints hardware info in Terminal",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING system_profiler SPHardwareDataType","ENTER"]},
-    {"name":"Network info","desc":"Shows network configuration with ifconfig",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING ifconfig","ENTER"]}
-  ]}
+ "mac": [
+  {
+   "cat": "Rickrolls & Music",
+   "items": [
+    {
+     "name": "Classic rickroll",
+     "desc": "Opens the famous video in the browser",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fullscreen rickroll",
+     "desc": "Opens the video and jumps to fullscreen",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"",
+      "ENTER",
+      "DELAY 5000",
+      "STRING f"
+     ]
+    },
+    {
+     "name": "Max-volume surprise",
+     "desc": "Cranks the volume, then opens the video",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING osascript -e \"set volume output volume 100\"",
+      "ENTER",
+      "STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Lofi radio",
+     "desc": "Opens a 24/7 music live stream",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING open \"https://www.youtube.com/watch?v=jfKfPfyJRdk\"",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Jump Scares & Sounds",
+   "items": [
+    {
+     "name": "Loud alert tones",
+     "desc": "Maxes volume and plays sharp beeps",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING osascript -e \"set volume output volume 100\"",
+      "ENTER",
+      "STRING for i in 1 2 3 4 5 6; do afplay /System/Library/Sounds/Sosumi.aiff; done",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Creepy whisper",
+     "desc": "Speaks a spooky line out loud",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING say -v Whisper \"I can see you\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Robot voice",
+     "desc": "Speaks a warning in a robotic voice",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING say -v Zarvox \"you should lock your computer\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Beep melody",
+     "desc": "Plays a short tune",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING afplay /System/Library/Sounds/Glass.aiff",
+      "ENTER",
+      "STRING afplay /System/Library/Sounds/Ping.aiff",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Single alert sound",
+     "desc": "Plays one system alert",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING afplay /System/Library/Sounds/Glass.aiff",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Popups & Fake Errors",
+   "items": [
+    {
+     "name": "Single popup",
+     "desc": "Shows one harmless message box",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING osascript -e 'display dialog \"Gotcha\" buttons {\"OK\"}'",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Popup barrage",
+     "desc": "Pops five message boxes in a row",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING for i in 1 2 3 4 5; do osascript -e 'display dialog \"Are you sure?\" buttons {\"OK\"}'; done",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake critical error",
+     "desc": "Shows a scary-looking error dialog",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING osascript -e 'display dialog \"A critical error occurred.\" buttons {\"OK\"} with icon stop'",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake update banner",
+     "desc": "Shows a system-style notification",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING osascript -e 'display notification \"An update is available.\" with title \"Software Update\"'",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Screen & Desktop Trolls",
+   "items": [
+    {
+     "name": "Minimize everything",
+     "desc": "Clears the screen to the desktop",
+     "lines": [
+      "DELAY 500",
+      "GUI h"
+     ]
+    },
+    {
+     "name": "Hide desktop icons",
+     "desc": "Makes the desktop icons disappear (reversible)",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING defaults write com.apple.finder CreateDesktop false",
+      "ENTER",
+      "STRING killall Finder",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Restore desktop icons",
+     "desc": "Undoes the hide-icons prank",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING defaults write com.apple.finder CreateDesktop true",
+      "ENTER",
+      "STRING killall Finder",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open the screenshot tool",
+     "desc": "Launches the region screenshot capture",
+     "lines": [
+      "DELAY 500",
+      "GUI SHIFT 3"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Fake Hacker & Terminal",
+   "items": [
+    {
+     "name": "Matrix rain",
+     "desc": "Green scrolling text in a console",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING printf '\\033[32m'",
+      "ENTER",
+      "STRING ls -laR /System 2>/dev/null | head -n 400",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Hacker typer",
+     "desc": "Opens a fake 'hacking' website",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING open \"https://hackertyper.net\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake breach terminal",
+     "desc": "Red console flashing an access warning",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING printf '\\033[31m'",
+      "ENTER",
+      "STRING echo ACCESS GRANTED",
+      "ENTER",
+      "STRING echo Downloading files...",
+      "ENTER",
+      "STRING sleep 2",
+      "ENTER",
+      "STRING echo Done.",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Fake download progress",
+     "desc": "Prints a fake progress readout",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING echo Installing updates...",
+      "ENTER",
+      "STRING echo 25%",
+      "ENTER",
+      "STRING sleep 1",
+      "ENTER",
+      "STRING echo 60%",
+      "ENTER",
+      "STRING sleep 1",
+      "ENTER",
+      "STRING echo 100% complete",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Typing Trolls",
+   "items": [
+    {
+     "name": "Creepy note",
+     "desc": "Types an unsettling (then reassuring) note",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING TextEdit",
+      "ENTER",
+      "DEFAULT_DELAY 40",
+      "DELAY 1400",
+      "STRING I know what you did last summer.",
+      "ENTER",
+      "STRING ...just kidding. Lock your screen next time!"
+     ]
+    },
+    {
+     "name": "Slow ghost typing",
+     "desc": "Types a message very slowly",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING TextEdit",
+      "ENTER",
+      "DEFAULT_DELAY 180",
+      "DELAY 1400",
+      "STRING is anyone there?"
+     ]
+    },
+    {
+     "name": "Caps Lock troll",
+     "desc": "Toggles Caps Lock repeatedly",
+     "lines": [
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK",
+      "DELAY 250",
+      "CAPSLOCK"
+     ]
+    },
+    {
+     "name": "Repeat note",
+     "desc": "Fills a text editor with a repeated line",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING TextEdit",
+      "ENTER",
+      "DEFAULT_DELAY 30",
+      "DELAY 1400",
+      "STRING look behind you... ",
+      "REPEAT 20"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "Apps & Websites",
+   "items": [
+    {
+     "name": "Open Calculator",
+     "desc": "Launches the calculator",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Calculator",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open the camera app",
+     "desc": "Opens the webcam app (harmless surprise)",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Photo Booth",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Pointer Pointer",
+     "desc": "Opens the silly pointerpointer.com site",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING open \"http://pointerpointer.com\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open a website",
+     "desc": "Opens a URL in the default browser (edit it)",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING open \"https://example.com\"",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Open a text editor",
+     "desc": "Opens a blank note",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING TextEdit",
+      "ENTER"
+     ]
+    }
+   ]
+  },
+  {
+   "cat": "System",
+   "items": [
+    {
+     "name": "Task list",
+     "desc": "Shows running processes",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Activity Monitor",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Lock the screen",
+     "desc": "Locks the computer",
+     "lines": [
+      "DELAY 500",
+      "CTRL GUI q"
+     ]
+    },
+    {
+     "name": "System info",
+     "desc": "Prints hardware / OS details",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING system_profiler SPHardwareDataType",
+      "ENTER"
+     ]
+    },
+    {
+     "name": "Network info",
+     "desc": "Shows the network configuration",
+     "lines": [
+      "DELAY 700",
+      "GUI SPACE",
+      "DELAY 400",
+      "STRING Terminal",
+      "ENTER",
+      "DELAY 900",
+      "STRING ifconfig",
+      "ENTER"
+     ]
+    }
+   ]
+  }
  ]
 }
 )PRESETS";
@@ -380,151 +1223,223 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
 static const char INDEX_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ESP32 BLE Ducky</title>
+<title>Keyboard Control Panel</title>
 <style>
- :root{--accent:#2563eb;--bg:#0f1216;--card:#161b22;--line:#242a32;--text:#e6e6e6;--muted:#8b98a5}
- [data-theme=light]{--bg:#f5f6f8;--card:#fff;--line:#e2e5e9;--text:#1b2129;--muted:#5b6470}
- *{box-sizing:border-box}
- body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0}
- header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px}
- header h1{font-size:1rem;margin:0 0 8px}
+ :root{--accent:#2563eb;--bg:#0f1216;--card:#161b22;--card2:#1c222b;--line:#252c36;--text:#e9edf1;--muted:#8b98a5;--radius:12px}
+ [data-theme=light]{--bg:#f3f5f8;--card:#ffffff;--card2:#f7f9fc;--line:#e3e7ec;--text:#1b2129;--muted:#5b6470}
+ *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);margin:0;
+   font-size:15px;line-height:1.4;padding-bottom:40px}
+ header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;
+   backdrop-filter:saturate(140%) blur(6px)}
+ .wrap{max-width:760px;margin:0 auto}
+ .brand{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+ .brand h1{font-size:1.02rem;margin:0;font-weight:700;letter-spacing:.2px}
+ .dot{width:9px;height:9px;border-radius:50%;background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.18);flex:none}
+ .dot.on{background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.18)}
  nav{display:flex;gap:6px}
  nav button{flex:1;background:transparent;color:var(--muted);border:1px solid var(--line);
-   border-radius:8px;padding:8px;font-size:.85rem;cursor:pointer}
+   border-radius:10px;padding:9px;font-size:.86rem;font-weight:600;cursor:pointer;transition:.15s}
  nav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
  main{padding:16px;max-width:760px;margin:0 auto}
- .tab{display:none}.tab.show{display:block}
- textarea{width:100%;height:200px;background:var(--card);color:var(--text);border:1px solid var(--line);
-   border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}
- input,select{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;
-   padding:9px;font-size:.85rem;width:100%}
- label{display:block;font-size:.78rem;color:var(--muted);margin:12px 0 4px}
- button.act{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 16px;
-   font-size:.9rem;cursor:pointer;margin-top:10px}
- button.sec{background:var(--line);color:var(--text)}
- button.small{padding:5px 10px;font-size:.75rem;border:0;border-radius:6px;cursor:pointer;margin-left:6px}
- button.small.run{background:var(--accent);color:#fff}button.small.sec{background:var(--line);color:var(--text)}
- button.small.dan{background:#7f1d1d;color:#fff}
- .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:600}
+ .tab{display:none}.tab.show{display:block;animation:fade .18s ease}
+ @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+ textarea{width:100%;height:190px;background:var(--card);color:var(--text);border:1px solid var(--line);
+   border-radius:var(--radius);padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem;resize:vertical}
+ input,select{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;
+   padding:11px;font-size:.9rem;width:100%}
+ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+ label{display:block;font-size:.78rem;color:var(--muted);margin:14px 0 5px;font-weight:600}
+ button{font-family:inherit}
+ .btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:.9rem;
+   font-weight:600;cursor:pointer;transition:.12s;min-height:44px}
+ .btn:active{transform:scale(.97)}
+ .btn.sec{background:var(--line);color:var(--text)}
+ .btn.block{width:100%;margin-top:14px}
+ .mini{padding:8px 14px;font-size:.78rem;border:0;border-radius:8px;cursor:pointer;font-weight:600;min-height:36px}
+ .mini.run{background:var(--accent);color:#fff}.mini.sec{background:var(--line);color:var(--text)}
+ .mini.dan{background:#7f1d1d;color:#fff}
+ .badge{display:inline-block;padding:3px 11px;border-radius:12px;font-size:.74rem;font-weight:700}
  .on{background:#12351f;color:#4ade80}.off{background:#3a1417;color:#f87171}
- .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}
- .catlabel{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 6px}
- .preset{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
- .preset:last-child{border-bottom:0}
- .preset .n{font-weight:600;font-size:.88rem}.preset .d{font-size:.75rem;color:var(--muted)}
- .preset .meta{flex:1;min-width:0}
- .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
- .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+ .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0}
+ .card h2{font-size:.92rem;margin:0 0 4px}
+ .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+ .kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:.9rem}
  .kv:last-child{border-bottom:0}.kv .k{color:var(--muted)}
- .note{font-size:.75rem;color:var(--muted);margin-top:8px}
+ .note{font-size:.78rem;color:var(--muted);margin-top:10px;line-height:1.5}
+ /* segmented OS toggle */
+ .seg{display:inline-flex;background:var(--line);border-radius:11px;padding:3px;gap:3px;width:100%;max-width:280px}
+ .seg button{flex:1;border:0;background:transparent;color:var(--muted);padding:9px;border-radius:9px;
+   font-size:.85rem;cursor:pointer;font-weight:700;transition:.12s}
+ .seg button.on{background:var(--accent);color:#fff}
+ /* search */
+ .search{position:relative;margin:14px 0 4px}
+ .search input{padding-left:36px}
+ .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.5}
+ /* accordion */
+ .acc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin:11px 0;overflow:hidden}
+ .acc-h{width:100%;display:flex;align-items:center;gap:11px;background:transparent;border:0;color:var(--text);
+   padding:15px 14px;font-size:.93rem;font-weight:700;cursor:pointer;text-align:left}
+ .acc-h .cnt{margin-left:auto;font-size:.72rem;color:var(--muted);font-weight:700;background:var(--card2);
+   border:1px solid var(--line);padding:2px 9px;border-radius:11px}
+ .acc-h .chev{transition:transform .2s;color:var(--muted);font-size:.8rem}
+ .acc.open .chev{transform:rotate(90deg)}
+ .acc-b{display:none;padding:0 14px 8px}
+ .acc.open .acc-b{display:block}
+ .preset{display:flex;align-items:center;gap:11px;padding:12px 0;border-top:1px solid var(--line)}
+ .preset .meta{flex:1;min-width:0}
+ .preset .n{font-weight:600;font-size:.9rem}
+ .preset .d{font-size:.78rem;color:var(--muted);margin-top:2px}
+ .empty{color:var(--muted);font-size:.85rem;text-align:center;padding:22px}
+ /* toast */
+ #toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:#0b0e12;color:#fff;
+   padding:11px 20px;border-radius:11px;font-size:.86rem;font-weight:600;pointer-events:none;transition:.25s;
+   z-index:60;box-shadow:0 8px 26px rgba(0,0,0,.45);max-width:88%;border:1px solid #2a323c}
+ #toast.show{opacity:1;transform:translate(-50%,0)}
 </style></head><body>
-<header>
- <h1>ESP32 BLE Rubber Ducky</h1>
+<header><div class="wrap">
+ <div class="brand"><span id="dot" class="dot"></span><h1>Control Panel</h1></div>
  <nav>
   <button data-tab="scripts" class="active">Scripts</button>
   <button data-tab="connection">Connection</button>
   <button data-tab="settings">Settings</button>
  </nav>
-</header>
+</div></header>
 <main>
 
  <section id="scripts" class="tab show">
   <div class="card">
-   <div class="row"><b style="font-size:.9rem">Run a script</b>
+   <div class="row"><h2 style="margin:0">Run a script</h2>
      <span id="badge" class="badge off" style="margin-left:auto">checking…</span></div>
-   <textarea id="script" placeholder="REM Paste DuckyScript here&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER"></textarea>
-   <div class="row">
-     <button class="act" onclick="go()">&#9654; Go</button>
-     <input id="pname" placeholder="save as…" style="max-width:160px">
-     <button class="act sec" onclick="save()">Save</button>
+   <textarea id="script" placeholder="Paste a script here, then press Go&#10;&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER" style="margin-top:10px"></textarea>
+   <div class="row" style="margin-top:10px">
+     <button class="btn" onclick="go()">&#9654;&nbsp; Go</button>
+     <input id="pname" placeholder="save as…" style="flex:1;min-width:120px">
+     <button class="btn sec" onclick="save()">Save</button>
    </div>
-   <div class="note">Keystrokes go to the paired Bluetooth target. Pair with the board first (see Connection).</div>
+   <div class="note">Keystrokes are sent to the paired Bluetooth target. Pair the board first (see the Connection tab).</div>
   </div>
 
   <div id="saved"></div>
-  <div class="row" style="margin:14px 0 0">
-    <span class="catlabel" style="margin:0 4px 0 0">Presets for</span>
-    <button id="os_win" class="small run" onclick="setOS('windows')">Windows</button>
-    <button id="os_mac" class="small sec" onclick="setOS('mac')">macOS</button>
+
+  <div class="row" style="margin:16px 2px 0;justify-content:center">
+    <div class="seg">
+      <button id="os_win" onclick="setOS('windows')">Windows</button>
+      <button id="os_mac" onclick="setOS('mac')">macOS</button>
+    </div>
+  </div>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input id="q" placeholder="Search presets…" oninput="filterPresets()">
   </div>
   <div id="presets"></div>
  </section>
 
  <section id="connection" class="tab">
   <div class="card">
-   <div class="kv"><span class="k">BLE status</span><span id="c_ble" class="badge off">…</span></div>
+   <div class="kv"><span class="k">Bluetooth status</span><span id="c_ble" class="badge off">…</span></div>
    <div class="kv"><span class="k">Bluetooth name</span><span id="c_bt">…</span></div>
-   <div class="kv"><span class="k">WiFi SSID</span><span id="c_ssid">…</span></div>
-   <div class="kv"><span class="k">Web UI address</span><span id="c_ip">…</span></div>
+   <div class="kv"><span class="k">WiFi network</span><span id="c_ssid">…</span></div>
+   <div class="kv"><span class="k">Web address</span><span id="c_ip">…</span></div>
    <div class="kv"><span class="k">WiFi clients</span><span id="c_cli">…</span></div>
   </div>
-  <div class="note">To use the ducky: on the target device, open Bluetooth settings and pair with the
-   Bluetooth name shown above. The badge turns green once it connects.</div>
+  <div class="note">On the target device, open Bluetooth settings and pair with the name shown above.
+   The status turns green once it connects, and scripts will then type on that device.</div>
  </section>
 
  <section id="settings" class="tab">
   <div class="card">
-   <b style="font-size:.9rem">Network</b>
-   <label>WiFi SSID</label><input id="s_ssid">
-   <label>WiFi password (min 8 chars)</label><input id="s_pass">
+   <h2>Network</h2>
+   <label>WiFi network name (SSID)</label><input id="s_ssid">
+   <label>WiFi password (min 8 characters)</label><input id="s_pass">
    <label>Bluetooth name</label><input id="s_ble">
-   <div class="note">Saving network changes reboots the board; you'll need to rejoin the WiFi and re-pair.</div>
-   <button class="act" onclick="saveNet()">Save &amp; reboot</button>
+   <div class="note">Saving network changes reboots the board — you'll need to rejoin the WiFi and re-pair Bluetooth.</div>
+   <button class="btn block" onclick="saveNet()">Save &amp; reboot</button>
   </div>
   <div class="card">
-   <b style="font-size:.9rem">Appearance</b>
+   <h2>Appearance</h2>
    <label>Theme</label>
-   <select id="s_theme"><option value="dark">Dark</option><option value="light">Light</option></select>
-   <label>Accent color</label><input id="s_accent" type="color" style="height:42px">
-   <button class="act" onclick="saveUi()">Save appearance</button>
+   <select id="s_theme" onchange="previewTheme()"><option value="dark">Dark</option><option value="light">Light</option></select>
+   <label>Accent color</label><input id="s_accent" type="color" style="height:46px;padding:4px" oninput="previewTheme()">
+   <button class="btn block" onclick="saveUi()">Save appearance</button>
   </div>
  </section>
 
 </main>
+<div id="toast"></div>
 <script>
- let CFG={};
+ let CFG={},PRESETS={},OS=localStorage.getItem('os')||'windows';
  function $(id){return document.getElementById(id);}
- // tabs
+ function enc(t){return t.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+ let tT;function toast(m){let t=$('toast');t.textContent=m;t.classList.add('show');
+   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),1700);}
+
+ // tab switching
  document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('show'));
-   b.classList.add('active');$(b.dataset.tab).classList.add('show');
- });
+   b.classList.add('active');$(b.dataset.tab).classList.add('show');window.scrollTo(0,0);});
+
  function applyTheme(){document.documentElement.dataset.theme=CFG.theme||'dark';
    document.documentElement.style.setProperty('--accent',CFG.accent||'#2563eb');}
- async function go(){await fetch('/run',{method:'POST',body:$('script').value});}
+ function previewTheme(){document.documentElement.dataset.theme=$('s_theme').value;
+   document.documentElement.style.setProperty('--accent',$('s_accent').value);}
+
+ // running scripts (with feedback)
+ async function runText(t){try{let r=await fetch('/run',{method:'POST',body:t});let m=await r.text();
+   toast(m=='running'?'Sent to target ✓':'Not connected — pair Bluetooth first');}
+   catch(e){toast('Error sending');}}
+ function go(){let s=$('script').value.trim();if(!s){toast('Nothing to run');return;}runText(s);}
+ function loadInto(t){$('script').value=t;window.scrollTo({top:0,behavior:'smooth'});toast('Loaded into editor');}
  async function save(){let n=$('pname').value||'payload';
-   await fetch('/save?name='+encodeURIComponent(n),{method:'POST',body:$('script').value});loadSaved();}
- async function runScriptText(t){await fetch('/run',{method:'POST',body:t});}
- let PRESETS={};let OS=localStorage.getItem('os')||'windows';
+   await fetch('/save?name='+encodeURIComponent(n),{method:'POST',body:$('script').value});
+   toast('Saved');loadSaved();}
+
  async function loadPresets(){PRESETS=await (await fetch('/presets')).json();renderPresets();}
- function setOS(os){OS=os;localStorage.setItem('os',os);renderPresets();}
+ function setOS(os){OS=os;localStorage.setItem('os',os);$('q').value='';renderPresets();}
  function renderPresets(){
-   $('os_win').className='small '+(OS=='windows'?'run':'sec');
-   $('os_mac').className='small '+(OS=='mac'?'run':'sec');
+   $('os_win').className=OS=='windows'?'on':'';
+   $('os_mac').className=OS=='mac'?'on':'';
    let groups=PRESETS[OS]||[];let h='';
-   groups.forEach(g=>{h+='<div class="catlabel">'+g.cat+'</div><div class="card">';
-     g.items.forEach((p,i)=>{let s=p.lines.join('\n').replace(/"/g,'&quot;');
-       h+='<div class="preset"><div class="meta"><div class="n">'+p.name+'</div><div class="d">'+p.desc+'</div></div>'+
-          '<button class="small run" onclick="runScriptText(this.dataset.s)" data-s="'+s+'">Run</button>'+
-          '<button class="small sec" onclick="$(\'script\').value=this.dataset.s" data-s="'+s+'">Load</button></div>';});
-     h+='</div>';});
-   $('presets').innerHTML=h;}
+   groups.forEach(g=>{
+     h+='<div class="acc" data-cat="'+enc(g.cat)+'">'+
+        '<button class="acc-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
+        '<span class="chev">&#9654;</span><span>'+g.cat+'</span><span class="cnt">'+g.items.length+'</span></button>'+
+        '<div class="acc-b">';
+     g.items.forEach(p=>{let s=enc(p.lines.join('\n'));
+       h+='<div class="preset" data-txt="'+enc((p.name+' '+p.desc).toLowerCase())+'">'+
+          '<div class="meta"><div class="n">'+p.name+'</div><div class="d">'+p.desc+'</div></div>'+
+          '<button class="mini run" data-s="'+s+'" onclick="runText(this.dataset.s)">Run</button>'+
+          '<button class="mini sec" data-s="'+s+'" onclick="loadInto(this.dataset.s)">Load</button></div>';});
+     h+='</div></div>';});
+   $('presets').innerHTML=h;filterPresets();}
+ function filterPresets(){
+   let q=$('q').value.trim().toLowerCase();
+   document.querySelectorAll('#presets .acc').forEach(acc=>{
+     let any=0;
+     acc.querySelectorAll('.preset').forEach(p=>{
+       let hit=!q||p.dataset.txt.indexOf(q)>=0;p.style.display=hit?'':'none';if(hit)any++;});
+     acc.style.display=any?'':'none';
+     if(q)acc.classList.toggle('open',!!any);});}
+
  async function loadSaved(){
    let arr=await (await fetch('/list')).json();
    if(!arr.length){$('saved').innerHTML='';return;}
-   let h='<div class="catlabel">Your saved payloads</div><div class="card">';
+   let h='<div class="acc open"><button class="acc-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
+     '<span class="chev">&#9654;</span><span>Your saved payloads</span><span class="cnt">'+arr.length+'</span></button><div class="acc-b">';
    arr.forEach(n=>{h+='<div class="preset"><div class="meta"><div class="n">'+n+'</div></div>'+
-     '<button class="small run" onclick="runFile(\''+n+'\')">Run</button>'+
-     '<button class="small sec" onclick="editFile(\''+n+'\')">Edit</button>'+
-     '<button class="small dan" onclick="delFile(\''+n+'\')">Del</button></div>';});
-   h+='</div>';$('saved').innerHTML=h;}
- async function runFile(n){await fetch('/runfile?name='+encodeURIComponent(n),{method:'POST'});}
+     '<button class="mini run" onclick="runFile(\''+n+'\')">Run</button>'+
+     '<button class="mini sec" onclick="editFile(\''+n+'\')">Edit</button>'+
+     '<button class="mini dan" onclick="delFile(\''+n+'\')">Del</button></div>';});
+   h+='</div></div>';$('saved').innerHTML=h;}
+ async function runFile(n){let r=await fetch('/runfile?name='+encodeURIComponent(n),{method:'POST'});
+   let m=await r.text();toast(m=='running'?'Sent to target ✓':'Not connected — pair Bluetooth first');}
  async function editFile(n){$('pname').value=n;$('script').value=await (await fetch('/load?name='+encodeURIComponent(n))).text();
    document.querySelector('nav button[data-tab=scripts]').click();window.scrollTo(0,0);}
- async function delFile(n){await fetch('/delete?name='+encodeURIComponent(n),{method:'POST'});loadSaved();}
- async function poll(){try{let j=await (await fetch('/status')).json();
-   let up=j.connected;
+ async function delFile(n){await fetch('/delete?name='+encodeURIComponent(n),{method:'POST'});toast('Deleted');loadSaved();}
+
+ async function poll(){try{let j=await (await fetch('/status')).json();let up=j.connected;
+   $('dot').className='dot'+(up?' on':'');
    let b=$('badge');b.textContent=up?'connected':'not connected';b.className='badge '+(up?'on':'off');
    let c=$('c_ble');c.textContent=up?'connected':'not connected';c.className='badge '+(up?'on':'off');
    $('c_bt').textContent=j.blename;$('c_ssid').textContent=j.ssid;$('c_ip').textContent='http://'+j.ip;
@@ -533,15 +1448,16 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
    $('s_ssid').value=CFG.ssid;$('s_pass').value=CFG.pass;$('s_ble').value=CFG.blename;
    $('s_theme').value=CFG.theme;$('s_accent').value=CFG.accent;}
  async function saveNet(){let p=$('s_pass').value;
-   if(p.length<8){alert('WiFi password must be at least 8 characters.');return;}
+   if(p.length<8){toast('WiFi password needs 8+ characters');return;}
    let body='ssid='+encodeURIComponent($('s_ssid').value)+'&pass='+encodeURIComponent(p)+
             '&blename='+encodeURIComponent($('s_ble').value);
    await fetch('/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
-   alert('Saved. The board is rebooting — rejoin the WiFi and re-pair Bluetooth.');}
+   toast('Saved — rebooting. Rejoin WiFi and re-pair.');}
  async function saveUi(){
    let body='theme='+encodeURIComponent($('s_theme').value)+'&accent='+encodeURIComponent($('s_accent').value);
    await fetch('/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
-   CFG.theme=$('s_theme').value;CFG.accent=$('s_accent').value;applyTheme();}
+   CFG.theme=$('s_theme').value;CFG.accent=$('s_accent').value;applyTheme();toast('Appearance saved');}
+
  loadCfg();loadPresets();loadSaved();poll();setInterval(poll,1500);
 </script></body></html>
 )HTML";

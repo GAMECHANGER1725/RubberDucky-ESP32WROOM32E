@@ -101,13 +101,15 @@ pio device monitor       # 115200 baud — shows the AP IP and BLE status
 The control panel is a single page with a navbar of three tabs:
 
 - **Scripts** — paste a DuckyScript into the box and press **Go** to run it
-  immediately. Below that is a **preset library** with a **Windows / macOS
-  toggle** — the presets are OS-specific (Windows uses the Run dialog +
-  `cmd`/PowerShell; macOS uses Spotlight + Terminal `open`/`say`/`afplay`), so
-  pick the toggle that matches your target. Presets are grouped by category
-  (Demos, YouTube & Media, Sounds, Pranks, Utilities, System); each has **Run**
-  (execute now) and **Load** (drop it into the editor to tweak). Your own
-  **saved payloads** also appear here with Run / Edit / Del.
+  immediately. Below that is a **preset library** with a **Windows / macOS**
+  segmented toggle (the presets are OS-specific — Windows uses the Run dialog +
+  `cmd`/PowerShell, macOS uses Spotlight + Terminal `open`/`say`/`osascript`),
+  a **search box**, and **collapsible category dropdowns** (Rickrolls & Music,
+  Jump Scares & Sounds, Popups & Fake Errors, Screen & Desktop Trolls, Fake
+  Hacker & Terminal, Typing Trolls, Apps & Websites, System). Each preset has
+  **Run** (execute now, with a "sent ✓" toast) and **Load** (drop it into the
+  editor to tweak). Your own **saved payloads** appear here too with Run / Edit
+  / Del.
 - **Connection** — live status: BLE connected badge, the Bluetooth pairing
   name, the WiFi SSID, the web address, and how many WiFi clients are joined.
 - **Settings** — change the **WiFi SSID/password** and the **Bluetooth name**
@@ -138,11 +140,24 @@ cfgBleName = prefs.getString("blename", "ESP32 Keyboard");
 See the [DuckyScript reference](docs/DUCKYSCRIPT.md) for the supported commands,
 modifiers, and named keys.
 
-The **preset library** in the Scripts tab is baked into the firmware (defined in
-`PRESETS_JSON` in [`src/main.cpp`](src/main.cpp)), split into `"windows"` and
-`"mac"` sets — add or edit entries in either to grow it. Both ship with harmless
-demos and pranks such as a **fake update** page, rickroll, text-to-speech, sound
-effects, and system-info commands, each written with that OS's native commands.
+The **preset library** in the Scripts tab is baked into the firmware, split into
+`"windows"` and `"mac"` sets (34 each), organised into collapsible categories.
+It is generated from [`scripts/gen_presets.py`](scripts/gen_presets.py), which
+keeps the two OS versions of every prank in sync — edit that file and re-run it
+to regenerate the `PRESETS_JSON` block in [`src/main.cpp`](src/main.cpp):
+
+```bash
+python3 scripts/gen_presets.py
+```
+
+Every preset is **harmless** and carries **no "rubber ducky" signature** (no
+quack/duck references or "you've been pranked" giveaways). The set is inspired
+by the harmless portion of the community
+[hak5 usbrubberducky prank library](https://github.com/hak5/usbrubberducky-payloads/tree/master/payloads/library/prank).
+Genuinely destructive payloads from that library (MEMZ, fork bombs, forced BSOD,
+screen-lockers, process killers) are **deliberately excluded** because they are
+not harmless, and lyric-typing rickrolls are replaced with the open-the-video
+version to avoid reproducing copyrighted lyrics.
 
 Standalone example payloads also live in [`payloads/`](payloads/):
 

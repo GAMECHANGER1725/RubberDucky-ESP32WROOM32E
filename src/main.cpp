@@ -230,7 +230,9 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
  "windows":[
   {"cat":"Demos","items":[
     {"name":"Hello Notepad","desc":"Opens Notepad and types a message",
-     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING Hello from an ESP32 over BLE!","ENTER","STRING Keystroke injection demo."]}
+     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING Hello from an ESP32 over BLE!","ENTER","STRING Keystroke injection demo."]},
+    {"name":"ASCII duck in Notepad","desc":"Types a little ASCII-art duck",
+     "lines":["DEFAULT_DELAY 25","DELAY 700","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING   __","ENTER","STRING <(o )___","ENTER","STRING  ( ._> /","ENTER","STRING   `---'","ENTER","STRING You have been ducked!"]}
   ]},
   {"cat":"YouTube & Media","items":[
     {"name":"Open a YouTube video","desc":"Launches a video in the default browser (edit the URL)",
@@ -238,13 +240,17 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
     {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
      "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=jfKfPfyJRdk","ENTER"]},
     {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER","DELAY 5000","STRING f"]}
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING https://www.youtube.com/watch?v=dQw4w9WgXcQ","ENTER","DELAY 5000","STRING f"]},
+    {"name":"Pointer Pointer","desc":"Opens the silly pointerpointer.com site",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING http://pointerpointer.com","ENTER"]}
   ]},
   {"cat":"Sounds","items":[
     {"name":"Beep melody","desc":"Plays notes through PowerShell console beeps",
      "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"[console]::beep(523,250);[console]::beep(659,250);[console]::beep(784,250);[console]::beep(1046,400)\"","ENTER"]},
     {"name":"Text-to-speech","desc":"Makes the target speak a phrase",
-     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('You have been ducked')\"","ENTER"]}
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('You have been ducked')\"","ENTER"]},
+    {"name":"Speak the time","desc":"Announces the current time out loud",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING powershell -c \"Add-Type -AssemblyName System.Speech;(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('The time is '+(Get-Date -Format t))\"","ENTER"]}
   ]},
   {"cat":"Pranks","items":[
     {"name":"Fake Windows Update","desc":"Opens fakeupdate.net fullscreen (harmless prank page)",
@@ -254,19 +260,39 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
     {"name":"Endless Notepad note","desc":"Opens Notepad and repeats a line 20 times",
      "lines":["DEFAULT_DELAY 30","DELAY 700","GUI r","DELAY 400","STRING notepad","ENTER","DELAY 900","STRING You have been ducked! ","REPEAT 20"]},
     {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
-     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]}
+     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]},
+    {"name":"Popup message","desc":"Shows a harmless alert box via mshta",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING mshta \"javascript:alert('You have been ducked!');close()\"","ENTER"]},
+    {"name":"Matrix console","desc":"Green cmd window scrolling a directory tree",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING color 0a","ENTER","STRING tree","ENTER"]},
+    {"name":"Show the desktop","desc":"Win+D minimizes everything",
+     "lines":["DELAY 500","GUI d"]},
+    {"name":"Scary red terminal","desc":"Red cmd window with a cheeky message",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING color 0c","ENTER","STRING echo You have been ducked!","ENTER","STRING pause","ENTER"]}
   ]},
   {"cat":"Utilities","items":[
     {"name":"Open Calculator","desc":"Launches calc.exe",
      "lines":["DELAY 700","GUI r","DELAY 400","STRING calc","ENTER"]},
-    {"name":"Lock the workstation","desc":"Win+L locks the screen",
-     "lines":["DELAY 500","GUI l"]},
+    {"name":"Open Paint","desc":"Launches mspaint",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING mspaint","ENTER"]},
+    {"name":"On-Screen Keyboard","desc":"Opens the accessibility keyboard",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING osk","ENTER"]},
+    {"name":"Character Map","desc":"Opens charmap",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING charmap","ENTER"]},
+    {"name":"Magnifier","desc":"Opens the screen magnifier",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING magnify","ENTER"]},
+    {"name":"Snipping Tool","desc":"Opens the screenshot tool",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING snippingtool","ENTER"]},
+    {"name":"Open File Explorer","desc":"Launches Explorer",
+     "lines":["DELAY 700","GUI r","DELAY 400","STRING explorer","ENTER"]},
     {"name":"Open a website","desc":"Opens a URL in the default browser (edit it)",
      "lines":["DELAY 700","GUI r","DELAY 400","STRING https://example.com","ENTER"]}
   ]},
   {"cat":"System","items":[
     {"name":"Open Task Manager","desc":"Ctrl+Shift+Esc",
      "lines":["DELAY 500","CTRL SHIFT ESC"]},
+    {"name":"Lock the workstation","desc":"Win+L locks the screen",
+     "lines":["DELAY 500","GUI l"]},
     {"name":"systeminfo","desc":"Prints system info in a command prompt",
      "lines":["DELAY 700","GUI r","DELAY 400","STRING cmd","ENTER","DELAY 700","STRING systeminfo","ENTER"]},
     {"name":"ipconfig","desc":"Shows the network configuration",
@@ -276,7 +302,9 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
  "mac":[
   {"cat":"Demos","items":[
     {"name":"Hello TextEdit","desc":"Opens TextEdit via Spotlight and types a message",
-     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING Hello from an ESP32 BLE keyboard!","ENTER","STRING Keystroke injection demo."]}
+     "lines":["DEFAULT_DELAY 40","DELAY 600","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING Hello from an ESP32 BLE keyboard!","ENTER","STRING Keystroke injection demo."]},
+    {"name":"ASCII duck in TextEdit","desc":"Types a little ASCII-art duck",
+     "lines":["DEFAULT_DELAY 25","DELAY 700","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING   __","ENTER","STRING <(o )___","ENTER","STRING  ( ._> /","ENTER","STRING   `---'","ENTER","STRING You have been ducked!"]}
   ]},
   {"cat":"YouTube & Media","items":[
     {"name":"Open a YouTube video","desc":"Uses Terminal 'open' to launch the default browser (edit the URL)",
@@ -284,11 +312,17 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
     {"name":"Lofi hip hop radio","desc":"Opens the 24/7 lofi live stream",
      "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=jfKfPfyJRdk\"","ENTER"]},
     {"name":"YouTube fullscreen","desc":"Opens a video, then presses 'f' to go fullscreen",
-     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER","DELAY 5000","STRING f"]}
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"","ENTER","DELAY 5000","STRING f"]},
+    {"name":"Pointer Pointer","desc":"Opens the silly pointerpointer.com site",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"http://pointerpointer.com\"","ENTER"]}
   ]},
   {"cat":"Sounds","items":[
     {"name":"Text-to-speech","desc":"Uses the built-in 'say' command",
      "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"you have been ducked\"","ENTER"]},
+    {"name":"Robot voice","desc":"Speaks in the classic Zarvox robot voice",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say -v Zarvox \"you have been ducked\"","ENTER"]},
+    {"name":"Speak the time","desc":"Announces the current time out loud",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"It is $(date '+%I:%M %p')\"","ENTER"]},
     {"name":"System beeps","desc":"Plays three system alert beeps via osascript",
      "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING osascript -e 'beep 3'","ENTER"]},
     {"name":"Play a sound","desc":"Plays a built-in macOS sound with afplay",
@@ -302,19 +336,35 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
     {"name":"Endless TextEdit note","desc":"Opens TextEdit and repeats a line 20 times",
      "lines":["DEFAULT_DELAY 30","DELAY 700","GUI SPACE","DELAY 400","STRING TextEdit","ENTER","DELAY 1400","STRING You have been ducked! ","REPEAT 20"]},
     {"name":"Caps Lock chaos","desc":"Toggles Caps Lock several times",
-     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]}
+     "lines":["CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK","DELAY 250","CAPSLOCK"]},
+    {"name":"Popup dialog","desc":"Shows a harmless dialog box via osascript",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING osascript -e 'display dialog \"You have been ducked!\" buttons {\"OK\"} with icon caution'","ENTER"]},
+    {"name":"Notification popup","desc":"Shows a Notification Center banner",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING osascript -e 'display notification \"You have been ducked\" with title \"System Update\"'","ENTER"]},
+    {"name":"Take a screenshot","desc":"Cmd+Shift+3 saves a screenshot to the desktop",
+     "lines":["DELAY 500","GUI SHIFT 3"]},
+    {"name":"Watching you","desc":"Speaks a spooky phrase",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING say \"I am always watching you\"","ENTER"]}
   ]},
   {"cat":"Utilities","items":[
     {"name":"Open Calculator","desc":"Launches Calculator via Spotlight",
      "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Calculator","ENTER"]},
-    {"name":"Lock the screen","desc":"Cmd+Ctrl+Q locks macOS",
-     "lines":["DELAY 500","CTRL GUI q"]},
+    {"name":"Open Photo Booth","desc":"Opens the webcam app (harmless surprise)",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Photo Booth","ENTER"]},
+    {"name":"Open Chess","desc":"Launches the built-in Chess game",
+     "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Chess","ENTER"]},
+    {"name":"Mission Control","desc":"Ctrl+Up shows all open windows",
+     "lines":["DELAY 500","CTRL UP"]},
+    {"name":"Fullscreen the app","desc":"Ctrl+Cmd+F fullscreens the front window",
+     "lines":["DELAY 500","CTRL GUI f"]},
     {"name":"Open a website","desc":"Opens a URL via Terminal (edit it)",
      "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING open \"https://example.com\"","ENTER"]}
   ]},
   {"cat":"System","items":[
     {"name":"Open Activity Monitor","desc":"macOS equivalent of Task Manager",
      "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Activity Monitor","ENTER"]},
+    {"name":"Lock the screen","desc":"Cmd+Ctrl+Q locks macOS",
+     "lines":["DELAY 500","CTRL GUI q"]},
     {"name":"System info","desc":"Prints hardware info in Terminal",
      "lines":["DELAY 700","GUI SPACE","DELAY 400","STRING Terminal","ENTER","DELAY 900","STRING system_profiler SPHardwareDataType","ENTER"]},
     {"name":"Network info","desc":"Shows network configuration with ifconfig",

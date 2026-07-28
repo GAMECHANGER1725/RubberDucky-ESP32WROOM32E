@@ -41,12 +41,14 @@ static void loadSettings() {
   cfgPass    = prefs.getString("pass",    "quack1234");
   cfgBleName = prefs.getString("blename", "ESP32 Keyboard");
   cfgTheme   = prefs.getString("theme",   "dark");
-  cfgAccent  = prefs.getString("accent",  "#2563eb");
+  cfgAccent  = prefs.getString("accent",  "#00e676");
+  // Migrate the old default blue accent to the new terminal green default.
+  if (cfgAccent == "#2563eb") { cfgAccent = "#00e676"; prefs.putString("accent", cfgAccent); }
   prefs.end();
 }
 
-// LittleFS layout: saved payloads live at /pl_<name>.txt
-static const char *PL_PREFIX = "/pl_";
+// LittleFS layout: saved scripts live under /s (see SROOT), as <name>.txt,
+// optionally inside a folder subdirectory: /s/<folder>/<name>.txt
 static const char *PL_SUFFIX = ".txt";
 
 BleKeyboard *bleKeyboard = nullptr;   // constructed after settings load
@@ -212,8 +214,20 @@ static String sanitize(const String &name) {
   return out;
 }
 
-static String pathFor(const String &name) {
-  return String(PL_PREFIX) + sanitize(name) + PL_SUFFIX;
+// Scripts live under /s . Folders are subdirectories: /s/<folder>/<name>.txt .
+// Scripts with no folder live directly at /s/<name>.txt .
+static const char *SROOT = "/s";
+
+static String folderPath(const String &folder) {
+  return String(SROOT) + "/" + sanitize(folder);
+}
+static String pathFor(const String &folder, const String &name) {
+  if (folder.length()) return folderPath(folder) + "/" + sanitize(name) + PL_SUFFIX;
+  return String(SROOT) + "/" + sanitize(name) + PL_SUFFIX;
+}
+static String baseName(const String &path) {
+  int sl = path.lastIndexOf('/');
+  return sl >= 0 ? path.substring(sl + 1) : path;
 }
 
 // ---------------------------------------------------------------------------
@@ -1220,89 +1234,108 @@ static const char PRESETS_JSON[] PROGMEM = R"PRESETS(
 // ---------------------------------------------------------------------------
 // Web UI (single page, navbar with Scripts / Connection / Settings tabs)
 // ---------------------------------------------------------------------------
+// Shared terminal/"hacker" stylesheet, served at /style.css for both pages.
+static const char STYLE_CSS[] PROGMEM = R"CSS(
+:root{--accent:#00e676;--bg:#04070a;--card:#0a1310;--card2:#0d1a14;--line:#16351f;
+  --text:#b8f5c9;--muted:#5f8a6e;--danger:#ff5370;--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+[data-theme=light]{--bg:#e9f2ec;--card:#ffffff;--card2:#f2f8f4;--line:#c9e3d2;--text:#0d2417;--muted:#4e7a5e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);margin:0;font-size:14.5px;line-height:1.45;
+  padding-bottom:48px;letter-spacing:.2px}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(0deg,rgba(0,255,140,.035) 0 1px,transparent 1px 3px)}
+a{color:var(--accent);text-decoration:none}
+::selection{background:var(--accent);color:#04070a}
+header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,var(--card),rgba(10,19,16,.92));
+  border-bottom:1px solid var(--line);padding:12px 16px;backdrop-filter:blur(6px)}
+.wrap{max-width:760px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.brand h1{font-size:.98rem;margin:0;font-weight:700;letter-spacing:.5px;color:var(--accent);
+  text-shadow:0 0 8px rgba(0,230,118,.55)}
+.brand .cur{display:inline-block;width:8px;height:15px;background:var(--accent);margin-left:2px;
+  box-shadow:0 0 8px var(--accent);animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 8px var(--danger);flex:none}
+.dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+nav{display:flex;gap:6px}
+nav button{flex:1;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:var(--radius);
+  padding:9px;font-family:var(--mono);font-size:.82rem;font-weight:700;letter-spacing:.5px;text-transform:lowercase;cursor:pointer;transition:.15s}
+nav button::before{content:"> "}
+nav button.active{background:transparent;color:var(--accent);border-color:var(--accent);
+  box-shadow:0 0 10px rgba(0,230,118,.25) inset}
+main{padding:16px;max-width:760px;margin:0 auto;position:relative;z-index:2}
+.tab{display:none}.tab.show{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+textarea{width:100%;height:190px;background:#050a08;color:var(--text);border:1px solid var(--line);
+  border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:.84rem;resize:vertical}
+input,select{background:#050a08;color:var(--text);border:1px solid var(--line);border-radius:var(--radius);
+  padding:11px;font-family:var(--mono);font-size:.86rem;width:100%}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+label{display:block;font-size:.74rem;color:var(--muted);margin:14px 0 5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+button{font-family:var(--mono)}
+.btn{background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);padding:11px 16px;
+  font-size:.84rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:.12s;min-height:44px}
+.btn:hover{background:var(--accent);color:#04070a;box-shadow:0 0 14px rgba(0,230,118,.4)}
+.btn:active{transform:scale(.97)}
+.btn.sec{color:var(--text);border-color:var(--line)}
+.btn.sec:hover{background:var(--line);color:var(--text);box-shadow:none}
+.btn.block{width:100%;margin-top:14px}
+.mini{padding:8px 13px;font-size:.72rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:6px;cursor:pointer;min-height:34px}
+.mini:hover{background:var(--accent);color:#04070a}
+.mini.sec{color:var(--muted);border-color:var(--line)}.mini.sec:hover{background:var(--line);color:var(--text)}
+.mini.dan{color:var(--danger);border-color:#4a1622}.mini.dan:hover{background:var(--danger);color:#04070a}
+.badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid}
+.on{color:var(--accent);border-color:var(--accent);box-shadow:0 0 8px rgba(0,230,118,.3)}
+.off{color:var(--danger);border-color:#4a1622}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0}
+.card h2{font-size:.82rem;margin:0 0 4px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent)}
+.card h2::before{content:"# "}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:.86rem}
+.kv:last-child{border-bottom:0}.kv .k{color:var(--muted);text-transform:uppercase;font-size:.72rem;letter-spacing:.5px}
+.note{font-size:.76rem;color:var(--muted);margin-top:10px;line-height:1.55}
+.note::before{content:"// "}
+.seg{display:inline-flex;background:#050a08;border:1px solid var(--line);border-radius:var(--radius);padding:3px;gap:3px;width:100%;max-width:300px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);padding:9px;border-radius:6px;font-family:var(--mono);
+  font-size:.8rem;cursor:pointer;font-weight:700;letter-spacing:.4px;transition:.12s}
+.seg button.on{background:var(--accent);color:#04070a;box-shadow:0 0 10px rgba(0,230,118,.4)}
+.search{position:relative;margin:14px 0 4px}
+.search input{padding-left:34px}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6;color:var(--accent)}
+.acc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin:11px 0;overflow:hidden}
+.acc-h{width:100%;display:flex;align-items:center;gap:10px;background:transparent;border:0;color:var(--text);
+  padding:14px;font-family:var(--mono);font-size:.86rem;font-weight:700;letter-spacing:.4px;cursor:pointer;text-align:left}
+.acc-h .cnt{margin-left:auto;font-size:.68rem;color:var(--accent);font-weight:700;background:#050a08;
+  border:1px solid var(--line);padding:2px 8px;border-radius:6px}
+.acc-h .chev{transition:transform .2s;color:var(--accent);font-size:.75rem}
+.acc.open .chev{transform:rotate(90deg)}
+.acc-b{display:none;padding:0 14px 8px}
+.acc.open .acc-b{display:block}
+.preset{display:flex;align-items:center;gap:11px;padding:12px 0;border-top:1px solid var(--line)}
+.preset .meta{flex:1;min-width:0}
+.preset .n{font-weight:700;font-size:.86rem}
+.preset .d{font-size:.74rem;color:var(--muted);margin-top:2px}
+.empty{color:var(--muted);font-size:.82rem;text-align:center;padding:22px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:#04070a;color:var(--accent);
+  padding:11px 18px;border-radius:var(--radius);font-family:var(--mono);font-size:.82rem;font-weight:700;pointer-events:none;
+  transition:.25s;z-index:60;box-shadow:0 0 20px rgba(0,230,118,.25);max-width:88%;border:1px solid var(--accent)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+)CSS";
+
 static const char INDEX_HTML[] PROGMEM = R"HTML(
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Keyboard Control Panel</title>
-<style>
- :root{--accent:#2563eb;--bg:#0f1216;--card:#161b22;--card2:#1c222b;--line:#252c36;--text:#e9edf1;--muted:#8b98a5;--radius:12px}
- [data-theme=light]{--bg:#f3f5f8;--card:#ffffff;--card2:#f7f9fc;--line:#e3e7ec;--text:#1b2129;--muted:#5b6470}
- *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
- body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);margin:0;
-   font-size:15px;line-height:1.4;padding-bottom:40px}
- header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;
-   backdrop-filter:saturate(140%) blur(6px)}
- .wrap{max-width:760px;margin:0 auto}
- .brand{display:flex;align-items:center;gap:9px;margin-bottom:11px}
- .brand h1{font-size:1.02rem;margin:0;font-weight:700;letter-spacing:.2px}
- .dot{width:9px;height:9px;border-radius:50%;background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.18);flex:none}
- .dot.on{background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.18)}
- nav{display:flex;gap:6px}
- nav button{flex:1;background:transparent;color:var(--muted);border:1px solid var(--line);
-   border-radius:10px;padding:9px;font-size:.86rem;font-weight:600;cursor:pointer;transition:.15s}
- nav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
- main{padding:16px;max-width:760px;margin:0 auto}
- .tab{display:none}.tab.show{display:block;animation:fade .18s ease}
- @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
- textarea{width:100%;height:190px;background:var(--card);color:var(--text);border:1px solid var(--line);
-   border-radius:var(--radius);padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem;resize:vertical}
- input,select{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;
-   padding:11px;font-size:.9rem;width:100%}
- input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
- label{display:block;font-size:.78rem;color:var(--muted);margin:14px 0 5px;font-weight:600}
- button{font-family:inherit}
- .btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:.9rem;
-   font-weight:600;cursor:pointer;transition:.12s;min-height:44px}
- .btn:active{transform:scale(.97)}
- .btn.sec{background:var(--line);color:var(--text)}
- .btn.block{width:100%;margin-top:14px}
- .mini{padding:8px 14px;font-size:.78rem;border:0;border-radius:8px;cursor:pointer;font-weight:600;min-height:36px}
- .mini.run{background:var(--accent);color:#fff}.mini.sec{background:var(--line);color:var(--text)}
- .mini.dan{background:#7f1d1d;color:#fff}
- .badge{display:inline-block;padding:3px 11px;border-radius:12px;font-size:.74rem;font-weight:700}
- .on{background:#12351f;color:#4ade80}.off{background:#3a1417;color:#f87171}
- .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0}
- .card h2{font-size:.92rem;margin:0 0 4px}
- .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
- .kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:.9rem}
- .kv:last-child{border-bottom:0}.kv .k{color:var(--muted)}
- .note{font-size:.78rem;color:var(--muted);margin-top:10px;line-height:1.5}
- /* segmented OS toggle */
- .seg{display:inline-flex;background:var(--line);border-radius:11px;padding:3px;gap:3px;width:100%;max-width:280px}
- .seg button{flex:1;border:0;background:transparent;color:var(--muted);padding:9px;border-radius:9px;
-   font-size:.85rem;cursor:pointer;font-weight:700;transition:.12s}
- .seg button.on{background:var(--accent);color:#fff}
- /* search */
- .search{position:relative;margin:14px 0 4px}
- .search input{padding-left:36px}
- .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.5}
- /* accordion */
- .acc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin:11px 0;overflow:hidden}
- .acc-h{width:100%;display:flex;align-items:center;gap:11px;background:transparent;border:0;color:var(--text);
-   padding:15px 14px;font-size:.93rem;font-weight:700;cursor:pointer;text-align:left}
- .acc-h .cnt{margin-left:auto;font-size:.72rem;color:var(--muted);font-weight:700;background:var(--card2);
-   border:1px solid var(--line);padding:2px 9px;border-radius:11px}
- .acc-h .chev{transition:transform .2s;color:var(--muted);font-size:.8rem}
- .acc.open .chev{transform:rotate(90deg)}
- .acc-b{display:none;padding:0 14px 8px}
- .acc.open .acc-b{display:block}
- .preset{display:flex;align-items:center;gap:11px;padding:12px 0;border-top:1px solid var(--line)}
- .preset .meta{flex:1;min-width:0}
- .preset .n{font-weight:600;font-size:.9rem}
- .preset .d{font-size:.78rem;color:var(--muted);margin-top:2px}
- .empty{color:var(--muted);font-size:.85rem;text-align:center;padding:22px}
- /* toast */
- #toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:#0b0e12;color:#fff;
-   padding:11px 20px;border-radius:11px;font-size:.86rem;font-weight:600;pointer-events:none;transition:.25s;
-   z-index:60;box-shadow:0 8px 26px rgba(0,0,0,.45);max-width:88%;border:1px solid #2a323c}
- #toast.show{opacity:1;transform:translate(-50%,0)}
-</style></head><body>
+<title>root@ducky:~#</title>
+<link rel="stylesheet" href="/style.css">
+</head><body>
 <header><div class="wrap">
- <div class="brand"><span id="dot" class="dot"></span><h1>Control Panel</h1></div>
+ <div class="brand"><span id="dot" class="dot"></span><h1>root@ducky:~#</h1><span class="cur"></span></div>
  <nav>
-  <button data-tab="scripts" class="active">Scripts</button>
-  <button data-tab="connection">Connection</button>
-  <button data-tab="settings">Settings</button>
+  <button data-tab="scripts" class="active">scripts</button>
+  <button data-tab="connection">connection</button>
+  <button data-tab="settings">settings</button>
  </nav>
 </div></header>
 <main>
@@ -1313,11 +1346,24 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
      <span id="badge" class="badge off" style="margin-left:auto">checking…</span></div>
    <textarea id="script" placeholder="Paste a script here, then press Go&#10;&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER" style="margin-top:10px"></textarea>
    <div class="row" style="margin-top:10px">
-     <button class="btn" onclick="go()">&#9654;&nbsp; Go</button>
-     <input id="pname" placeholder="save as…" style="flex:1;min-width:120px">
+     <button class="btn" onclick="go()">&#9654;&nbsp; run</button>
+   </div>
+   <label>Save this script</label>
+   <div class="row">
+     <input id="pname" placeholder="script name…" style="flex:2;min-width:130px">
+     <select id="pfolder" style="flex:1;min-width:120px"></select>
      <button class="btn sec" onclick="save()">Save</button>
    </div>
-   <div class="note">Keystrokes are sent to the paired Bluetooth target. Pair the board first (see the Connection tab).</div>
+   <div class="note">Keystrokes are sent to the paired Bluetooth target. Pair the board first (see the connection tab).</div>
+  </div>
+
+  <div class="card">
+   <div class="row"><h2 style="margin:0">Folders</h2></div>
+   <div class="row" style="margin-top:8px">
+     <input id="newfolder" placeholder="new folder name…" style="flex:1;min-width:130px" onkeydown="if(event.key=='Enter')mkFolder()">
+     <button class="btn sec" onclick="mkFolder()">+ folder</button>
+   </div>
+   <div class="note">Folders open in a new tab where you can run, edit, and save scripts inside them.</div>
   </div>
 
   <div id="saved"></div>
@@ -1381,7 +1427,7 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
    b.classList.add('active');$(b.dataset.tab).classList.add('show');window.scrollTo(0,0);});
 
  function applyTheme(){document.documentElement.dataset.theme=CFG.theme||'dark';
-   document.documentElement.style.setProperty('--accent',CFG.accent||'#2563eb');}
+   document.documentElement.style.setProperty('--accent',CFG.accent||'#00e676');}
  function previewTheme(){document.documentElement.dataset.theme=$('s_theme').value;
    document.documentElement.style.setProperty('--accent',$('s_accent').value);}
 
@@ -1391,9 +1437,14 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
    catch(e){toast('Error sending');}}
  function go(){let s=$('script').value.trim();if(!s){toast('Nothing to run');return;}runText(s);}
  function loadInto(t){$('script').value=t;window.scrollTo({top:0,behavior:'smooth'});toast('Loaded into editor');}
- async function save(){let n=$('pname').value||'payload';
-   await fetch('/save?name='+encodeURIComponent(n),{method:'POST',body:$('script').value});
-   toast('Saved');loadSaved();}
+ async function save(){let n=$('pname').value||'payload';let f=$('pfolder').value;
+   await fetch('/save?folder='+encodeURIComponent(f)+'&name='+encodeURIComponent(n),{method:'POST',body:$('script').value});
+   toast(f?('Saved to '+f):'Saved');loadSaved();}
+ async function mkFolder(){let n=$('newfolder').value.trim();if(!n){toast('Enter a folder name');return;}
+   await fetch('/mkfolder?name='+encodeURIComponent(n),{method:'POST'});$('newfolder').value='';
+   toast('Folder created');loadSaved();}
+ async function rmFolder(n){if(!confirm('Delete folder "'+n+'" and all scripts inside?'))return;
+   await fetch('/rmfolder?name='+encodeURIComponent(n),{method:'POST'});toast('Folder deleted');loadSaved();}
 
  async function loadPresets(){PRESETS=await (await fetch('/presets')).json();renderPresets();}
  function setOS(os){OS=os;localStorage.setItem('os',os);$('q').value='';renderPresets();}
@@ -1423,18 +1474,37 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
      if(q)acc.classList.toggle('open',!!any);});}
 
  async function loadSaved(){
-   let arr=await (await fetch('/list')).json();
-   if(!arr.length){$('saved').innerHTML='';return;}
-   let h='<div class="acc open"><button class="acc-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
-     '<span class="chev">&#9654;</span><span>Your saved payloads</span><span class="cnt">'+arr.length+'</span></button><div class="acc-b">';
-   arr.forEach(n=>{h+='<div class="preset"><div class="meta"><div class="n">'+n+'</div></div>'+
-     '<button class="mini run" onclick="runFile(\''+n+'\')">Run</button>'+
-     '<button class="mini sec" onclick="editFile(\''+n+'\')">Edit</button>'+
-     '<button class="mini dan" onclick="delFile(\''+n+'\')">Del</button></div>';});
-   h+='</div></div>';$('saved').innerHTML=h;}
+   let folders=await (await fetch('/folders')).json();
+   let root=await (await fetch('/list')).json();
+   // populate the "save to folder" dropdown
+   let sel=$('pfolder');let cur=sel.value;
+   sel.innerHTML='<option value="">(no folder)</option>'+folders.map(f=>'<option>'+enc(f.name)+'</option>').join('');
+   sel.value=cur;
+   let h='';
+   if(folders.length){
+     h+='<div class="acc open"><button class="acc-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
+        '<span class="chev">&#9654;</span><span>Folders</span><span class="cnt">'+folders.length+'</span></button><div class="acc-b">';
+     folders.forEach(f=>{let u='/folder?name='+encodeURIComponent(f.name);
+       h+='<div class="preset"><div class="meta"><div class="n">&#128193; <a href="'+u+'" target="_blank" rel="noopener">'+enc(f.name)+'</a></div>'+
+          '<div class="d">'+f.count+' script(s)</div></div>'+
+          '<a class="mini" href="'+u+'" target="_blank" rel="noopener">open &#8599;</a>'+
+          '<button class="mini dan" onclick="rmFolder(this.dataset.n)" data-n="'+enc(f.name)+'">del</button></div>';});
+     h+='</div></div>';
+   }
+   if(root.length){
+     h+='<div class="acc open"><button class="acc-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
+        '<span class="chev">&#9654;</span><span>Ungrouped scripts</span><span class="cnt">'+root.length+'</span></button><div class="acc-b">';
+     root.forEach(n=>{h+='<div class="preset"><div class="meta"><div class="n">'+enc(n)+'</div></div>'+
+       '<button class="mini" onclick="runFile(this.dataset.n)" data-n="'+enc(n)+'">run</button>'+
+       '<button class="mini sec" onclick="editFile(this.dataset.n)" data-n="'+enc(n)+'">edit</button>'+
+       '<button class="mini dan" onclick="delFile(this.dataset.n)" data-n="'+enc(n)+'">del</button></div>';});
+     h+='</div></div>';
+   }
+   $('saved').innerHTML=h;}
  async function runFile(n){let r=await fetch('/runfile?name='+encodeURIComponent(n),{method:'POST'});
    let m=await r.text();toast(m=='running'?'Sent to target ✓':'Not connected — pair Bluetooth first');}
- async function editFile(n){$('pname').value=n;$('script').value=await (await fetch('/load?name='+encodeURIComponent(n))).text();
+ async function editFile(n){$('pname').value=n;$('pfolder').value='';
+   $('script').value=await (await fetch('/load?name='+encodeURIComponent(n))).text();
    document.querySelector('nav button[data-tab=scripts]').click();window.scrollTo(0,0);}
  async function delFile(n){await fetch('/delete?name='+encodeURIComponent(n),{method:'POST'});toast('Deleted');loadSaved();}
 
@@ -1462,11 +1532,76 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
 </script></body></html>
 )HTML";
 
+// Per-folder page, opened in a new tab from the main page (GET /folder?name=X).
+static const char FOLDER_HTML[] PROGMEM = R"HTML(
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>root@ducky:~/</title>
+<link rel="stylesheet" href="/style.css">
+</head><body>
+<header><div class="wrap">
+ <div class="brand"><span id="dot" class="dot"></span><h1 id="ftitle">root@ducky:~/</h1><span class="cur"></span></div>
+ <nav><button onclick="location.href='/'">&lt; back to control panel</button></nav>
+</div></header>
+<main>
+ <div class="card">
+  <div class="row"><h2 style="margin:0">New script in this folder</h2>
+    <span id="badge" class="badge off" style="margin-left:auto">checking…</span></div>
+  <textarea id="script" placeholder="Type or paste a script, then Save or Run&#10;&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER" style="margin-top:10px"></textarea>
+  <div class="row" style="margin-top:10px">
+    <button class="btn" onclick="go()">&#9654;&nbsp; run</button>
+    <input id="pname" placeholder="script name…" style="flex:1;min-width:120px">
+    <button class="btn sec" onclick="save()">save here</button>
+  </div>
+ </div>
+ <div id="list"></div>
+</main>
+<div id="toast"></div>
+<script>
+ let FOLDER=new URLSearchParams(location.search).get('name')||'';
+ function $(id){return document.getElementById(id);}
+ function enc(t){return t.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+ let tT;function toast(m){let t=$('toast');t.textContent=m;t.classList.add('show');
+   clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),1700);}
+ document.title='root@ducky:~/'+FOLDER;
+ $('ftitle').textContent='~/'+FOLDER;
+ let qs='folder='+encodeURIComponent(FOLDER);
+ async function runText(t){try{let r=await fetch('/run',{method:'POST',body:t});let m=await r.text();
+   toast(m=='running'?'Sent to target ✓':'Not connected — pair Bluetooth first');}catch(e){toast('Error');}}
+ function go(){let s=$('script').value.trim();if(!s){toast('Nothing to run');return;}runText(s);}
+ async function save(){let n=$('pname').value||'payload';
+   await fetch('/save?'+qs+'&name='+encodeURIComponent(n),{method:'POST',body:$('script').value});
+   toast('Saved');load();}
+ async function load(){
+   let arr=await (await fetch('/list?'+qs)).json();
+   if(!arr.length){$('list').innerHTML='<div class="empty">No scripts in this folder yet.</div>';return;}
+   let h='<div class="acc open"><button class="acc-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
+     '<span class="chev">&#9654;</span><span>Scripts</span><span class="cnt">'+arr.length+'</span></button><div class="acc-b">';
+   arr.forEach(n=>{h+='<div class="preset"><div class="meta"><div class="n">'+enc(n)+'</div></div>'+
+     '<button class="mini" onclick="runFile(this.dataset.n)" data-n="'+enc(n)+'">run</button>'+
+     '<button class="mini sec" onclick="editFile(this.dataset.n)" data-n="'+enc(n)+'">edit</button>'+
+     '<button class="mini dan" onclick="delFile(this.dataset.n)" data-n="'+enc(n)+'">del</button></div>';});
+   h+='</div></div>';$('list').innerHTML=h;}
+ async function runFile(n){let r=await fetch('/runfile?'+qs+'&name='+encodeURIComponent(n),{method:'POST'});
+   let m=await r.text();toast(m=='running'?'Sent to target ✓':'Not connected — pair Bluetooth first');}
+ async function editFile(n){$('pname').value=n;
+   $('script').value=await (await fetch('/load?'+qs+'&name='+encodeURIComponent(n))).text();
+   window.scrollTo({top:0,behavior:'smooth'});toast('Loaded into editor');}
+ async function delFile(n){await fetch('/delete?'+qs+'&name='+encodeURIComponent(n),{method:'POST'});toast('Deleted');load();}
+ async function poll(){try{let j=await (await fetch('/status')).json();let up=j.connected;
+   $('dot').className='dot'+(up?' on':'');
+   let b=$('badge');b.textContent=up?'connected':'not connected';b.className='badge '+(up?'on':'off');}catch(e){}}
+ load();poll();setInterval(poll,1500);
+</script></body></html>
+)HTML";
+
 // ---------------------------------------------------------------------------
 // HTTP handlers
 // ---------------------------------------------------------------------------
-static void handleRoot()    { server.send_P(200, "text/html", INDEX_HTML); }
-static void handlePresets() { server.send_P(200, "application/json", PRESETS_JSON); }
+static void handleRoot()       { server.send_P(200, "text/html", INDEX_HTML); }
+static void handleFolderPage() { server.send_P(200, "text/html", FOLDER_HTML); }
+static void handleStyle()      { server.send_P(200, "text/css", STYLE_CSS); }
+static void handlePresets()    { server.send_P(200, "application/json", PRESETS_JSON); }
 
 static void handleStatus() {
   String j = "{";
@@ -1521,50 +1656,101 @@ static void handleRun() {
   runScript(body);
 }
 static void handleSave() {
-  File f = LittleFS.open(pathFor(server.arg("name")), "w");
+  String folder = server.arg("folder");
+  if (folder.length()) {
+    String fp = folderPath(folder);
+    if (!LittleFS.exists(fp)) LittleFS.mkdir(fp);
+  }
+  File f = LittleFS.open(pathFor(folder, server.arg("name")), "w");
   if (!f) { server.send(500, "text/plain", "write failed"); return; }
   f.print(server.arg("plain"));
   f.close();
   server.send(200, "text/plain", "saved");
 }
 static void handleLoad() {
-  File f = LittleFS.open(pathFor(server.arg("name")), "r");
+  File f = LittleFS.open(pathFor(server.arg("folder"), server.arg("name")), "r");
   if (!f) { server.send(404, "text/plain", ""); return; }
   server.streamFile(f, "text/plain");
   f.close();
 }
 static void handleDelete() {
-  LittleFS.remove(pathFor(server.arg("name")));
+  LittleFS.remove(pathFor(server.arg("folder"), server.arg("name")));
   server.send(200, "text/plain", "deleted");
 }
 static void handleRunFile() {
-  File f = LittleFS.open(pathFor(server.arg("name")), "r");
+  File f = LittleFS.open(pathFor(server.arg("folder"), server.arg("name")), "r");
   if (!f) { server.send(404, "text/plain", "not found"); return; }
   String body = f.readString();
   f.close();
   server.send(200, "text/plain", bleKeyboard->isConnected() ? "running" : "not connected");
   runScript(body);
 }
+// List script names inside a folder (or the /s root when folder is empty).
 static void handleList() {
+  String folder = server.arg("folder");
+  String base = folder.length() ? folderPath(folder) : String(SROOT);
   String json = "[";
-  File root = LittleFS.open("/");
-  File file = root.openNextFile();
+  File dir = LittleFS.open(base);
+  File e = dir.openNextFile();
   bool first = true;
-  String prefix = String(PL_PREFIX).substring(1); // "pl_"
-  while (file) {
-    String fn = String(file.name());
-    int slash = fn.lastIndexOf('/');
-    if (slash >= 0) fn = fn.substring(slash + 1);
-    if (fn.startsWith(prefix) && fn.endsWith(PL_SUFFIX)) {
-      String nm = fn.substring(prefix.length(), fn.length() - strlen(PL_SUFFIX));
-      if (!first) json += ",";
-      json += "\"" + nm + "\"";
-      first = false;
+  while (e) {
+    if (!e.isDirectory()) {
+      String fn = baseName(String(e.name()));
+      if (fn.endsWith(PL_SUFFIX)) {
+        String nm = fn.substring(0, fn.length() - strlen(PL_SUFFIX));
+        if (!first) json += ",";
+        json += "\"" + nm + "\"";
+        first = false;
+      }
     }
-    file = root.openNextFile();
+    e = dir.openNextFile();
   }
   json += "]";
   server.send(200, "application/json", json);
+}
+// List folders (subdirectories of /s) with a script count each.
+static void handleFolders() {
+  String json = "[";
+  File root = LittleFS.open(SROOT);
+  File e = root.openNextFile();
+  bool first = true;
+  while (e) {
+    if (e.isDirectory()) {
+      String fn = baseName(String(e.name()));
+      int cnt = 0;
+      File d = LittleFS.open(String(SROOT) + "/" + fn);
+      File c = d.openNextFile();
+      while (c) { if (!c.isDirectory()) cnt++; c = d.openNextFile(); }
+      if (!first) json += ",";
+      json += "{\"name\":\"" + fn + "\",\"count\":" + String(cnt) + "}";
+      first = false;
+    }
+    e = root.openNextFile();
+  }
+  json += "]";
+  server.send(200, "application/json", json);
+}
+static void handleMkFolder() {
+  String name = server.arg("name");
+  if (!name.length()) { server.send(400, "text/plain", "name required"); return; }
+  String fp = folderPath(name);
+  if (!LittleFS.exists(fp)) LittleFS.mkdir(fp);
+  server.send(200, "text/plain", "ok");
+}
+static void handleRmFolder() {
+  String fp = folderPath(server.arg("name"));
+  File d = LittleFS.open(fp);
+  String paths = "";
+  File c = d.openNextFile();
+  while (c) { if (!c.isDirectory()) paths += String(c.name()) + "\n"; c = d.openNextFile(); }
+  int i = 0;
+  while (i < (int)paths.length()) {
+    int nl = paths.indexOf('\n', i);
+    LittleFS.remove(paths.substring(i, nl));
+    i = nl + 1;
+  }
+  LittleFS.rmdir(fp);
+  server.send(200, "text/plain", "ok");
 }
 
 // ---------------------------------------------------------------------------
@@ -1578,6 +1764,33 @@ void setup() {
 
   if (!LittleFS.begin(true)) Serial.println("[FS] LittleFS mount failed");
 
+  // Ensure the scripts root exists, then migrate any legacy /pl_*.txt saves.
+  if (!LittleFS.exists(SROOT)) LittleFS.mkdir(SROOT);
+  {
+    File r = LittleFS.open("/");
+    File e = r.openNextFile();
+    String moves = "";
+    while (e) {
+      String b = baseName(String(e.name()));
+      if (!e.isDirectory() && b.startsWith("pl_") && b.endsWith(PL_SUFFIX))
+        moves += String(e.name()) + "\n";
+      e = r.openNextFile();
+    }
+    int i = 0;
+    while (i < (int)moves.length()) {
+      int nl = moves.indexOf('\n', i);
+      String src = moves.substring(i, nl); i = nl + 1;
+      String nm = baseName(src).substring(3); // strip "pl_"
+      File in = LittleFS.open(src, "r");
+      if (in) {
+        String data = in.readString(); in.close();
+        File out = LittleFS.open(String(SROOT) + "/" + nm, "w");
+        if (out) { out.print(data); out.close(); }
+        LittleFS.remove(src);
+      }
+    }
+  }
+
   WiFi.mode(WIFI_AP);
   WiFi.softAP(cfgSsid.c_str(), cfgPass.c_str());
   Serial.printf("[WiFi] AP '%s'  http://%s\n", cfgSsid.c_str(), WiFi.softAPIP().toString().c_str());
@@ -1586,17 +1799,22 @@ void setup() {
   bleKeyboard->begin();
   Serial.printf("[BLE] advertising as '%s'\n", cfgBleName.c_str());
 
-  server.on("/",        HTTP_GET,  handleRoot);
-  server.on("/status",  HTTP_GET,  handleStatus);
-  server.on("/presets", HTTP_GET,  handlePresets);
-  server.on("/settings",HTTP_GET,  handleGetSettings);
-  server.on("/settings",HTTP_POST, handlePostSettings);
-  server.on("/list",    HTTP_GET,  handleList);
-  server.on("/load",    HTTP_GET,  handleLoad);
-  server.on("/run",     HTTP_POST, handleRun);
-  server.on("/save",    HTTP_POST, handleSave);
-  server.on("/delete",  HTTP_POST, handleDelete);
-  server.on("/runfile", HTTP_POST, handleRunFile);
+  server.on("/",         HTTP_GET,  handleRoot);
+  server.on("/style.css",HTTP_GET,  handleStyle);
+  server.on("/folder",   HTTP_GET,  handleFolderPage);
+  server.on("/status",   HTTP_GET,  handleStatus);
+  server.on("/presets",  HTTP_GET,  handlePresets);
+  server.on("/settings", HTTP_GET,  handleGetSettings);
+  server.on("/settings", HTTP_POST, handlePostSettings);
+  server.on("/list",     HTTP_GET,  handleList);
+  server.on("/load",     HTTP_GET,  handleLoad);
+  server.on("/folders",  HTTP_GET,  handleFolders);
+  server.on("/mkfolder", HTTP_POST, handleMkFolder);
+  server.on("/rmfolder", HTTP_POST, handleRmFolder);
+  server.on("/run",      HTTP_POST, handleRun);
+  server.on("/save",     HTTP_POST, handleSave);
+  server.on("/delete",   HTTP_POST, handleDelete);
+  server.on("/runfile",  HTTP_POST, handleRunFile);
   server.begin();
   Serial.println("[HTTP] server started");
 }

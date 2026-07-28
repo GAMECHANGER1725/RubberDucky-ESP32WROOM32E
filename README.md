@@ -98,25 +98,33 @@ pio device monitor       # 115200 baud — shows the AP IP and BLE status
 
 ## The web UI
 
-The control panel is a single page with a navbar of three tabs:
+The control panel has a green-on-black **terminal ("hacker") theme** and a
+navbar of three tabs:
 
-- **Scripts** — paste a DuckyScript into the box and press **Go** to run it
+- **Scripts** — paste a script into the box and press **run** to fire it
   immediately. Below that is a **preset library** with a **Windows / macOS**
   segmented toggle (the presets are OS-specific — Windows uses the Run dialog +
   `cmd`/PowerShell, macOS uses Spotlight + Terminal `open`/`say`/`osascript`),
   a **search box**, and **collapsible category dropdowns** (Rickrolls & Music,
   Jump Scares & Sounds, Popups & Fake Errors, Screen & Desktop Trolls, Fake
   Hacker & Terminal, Typing Trolls, Apps & Websites, System). Each preset has
-  **Run** (execute now, with a "sent ✓" toast) and **Load** (drop it into the
-  editor to tweak). Your own **saved payloads** appear here too with Run / Edit
-  / Del.
-- **Connection** — live status: BLE connected badge, the Bluetooth pairing
-  name, the WiFi SSID, the web address, and how many WiFi clients are joined.
+  **run** (execute now, with a "sent ✓" toast) and **load** (drop it into the
+  editor to tweak).
+- **Folders** — create named folders and save your own scripts inside them.
+  Each folder **opens in its own tab** (`/folder?name=…`) — a self-contained
+  page where you can write, save, run, edit, and delete the scripts in that
+  folder. When saving a script on the main page you pick its target folder from
+  a dropdown (or "(no folder)" to keep it ungrouped). Folders and ungrouped
+  scripts are listed under the editor. Saved scripts live in flash
+  (LittleFS) under `/s/<folder>/<name>.txt`.
+- **Connection** — live status: Bluetooth connected badge, the pairing name,
+  the WiFi network, the web address, and how many WiFi clients are joined.
 - **Settings** — change the **WiFi SSID/password** and the **Bluetooth name**
-  (saved to flash; the board reboots to apply them), plus **theme** (dark/light)
-  and **accent color** for the UI.
+  (saved to flash; the board reboots to apply them), plus **theme** and
+  **accent color** (defaults to terminal green) with a live preview.
 
-The green **connected** badge appears once the target is paired over Bluetooth.
+The **connected** badge and header dot turn green once the target is paired
+over Bluetooth.
 
 ## Configuration
 

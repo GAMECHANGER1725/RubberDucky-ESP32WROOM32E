@@ -23,6 +23,9 @@
 #include <LittleFS.h>
 #include <Preferences.h>
 #include <BleKeyboard.h>
+#ifdef USE_NIMBLE
+#include <NimBLEDevice.h>
+#endif
 
 // ---------------------------------------------------------------------------
 // Persistent settings (stored in NVS via Preferences)
@@ -31,9 +34,10 @@ Preferences prefs;
 
 String cfgSsid;      // WiFi AP name the board hosts
 String cfgPass;      // WiFi AP password (>= 8 chars)
-String cfgBleName;   // Bluetooth pairing name
+String cfgBleName;   // Bluetooth pairing name (also shown in the Swift Pair prompt)
 String cfgTheme;     // "dark" | "light"
 String cfgAccent;    // CSS accent color, e.g. "#2563eb"
+bool   cfgSwift;     // Windows Swift Pair: advertise a "connect" prompt for THIS keyboard
 
 static void loadSettings() {
   prefs.begin("ducky", false);
@@ -42,6 +46,7 @@ static void loadSettings() {
   cfgBleName = prefs.getString("blename", "ESP32 Keyboard");
   cfgTheme   = prefs.getString("theme",   "dark");
   cfgAccent  = prefs.getString("accent",  "#00e676");
+  cfgSwift   = prefs.getBool("swift", false);
   // Migrate the old default blue accent to the new terminal green default.
   if (cfgAccent == "#2563eb") { cfgAccent = "#00e676"; prefs.putString("accent", cfgAccent); }
   prefs.end();
@@ -1399,6 +1404,11 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
    <label>WiFi network name (SSID)</label><input id="s_ssid">
    <label>WiFi password (min 8 characters)</label><input id="s_pass">
    <label>Bluetooth name</label><input id="s_ble">
+   <label>Windows Swift Pair prompt</label>
+   <div class="row" style="gap:9px;align-items:flex-start">
+     <input type="checkbox" id="s_swift" style="width:auto;margin-top:2px">
+     <span class="note" style="margin:0">Advertise a <b>Connect to &lt;name&gt;</b> popup for this keyboard on nearby Windows PCs, so you don't have to open Bluetooth settings. Uses the Bluetooth name above. Windows only.</span>
+   </div>
    <div class="note">Saving network changes reboots the board — you'll need to rejoin the WiFi and re-pair Bluetooth.</div>
    <button class="btn block" onclick="saveNet()">Save &amp; reboot</button>
   </div>
@@ -1516,11 +1526,12 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
    $('c_cli').textContent=j.clients;}catch(e){}}
  async function loadCfg(){CFG=await (await fetch('/settings')).json();applyTheme();
    $('s_ssid').value=CFG.ssid;$('s_pass').value=CFG.pass;$('s_ble').value=CFG.blename;
-   $('s_theme').value=CFG.theme;$('s_accent').value=CFG.accent;}
+   $('s_theme').value=CFG.theme;$('s_accent').value=CFG.accent;$('s_swift').checked=!!CFG.swift;}
  async function saveNet(){let p=$('s_pass').value;
    if(p.length<8){toast('WiFi password needs 8+ characters');return;}
    let body='ssid='+encodeURIComponent($('s_ssid').value)+'&pass='+encodeURIComponent(p)+
-            '&blename='+encodeURIComponent($('s_ble').value);
+            '&blename='+encodeURIComponent($('s_ble').value)+
+            '&swift='+($('s_swift').checked?'true':'false');
    await fetch('/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
    toast('Saved — rebooting. Rejoin WiFi and re-pair.');}
  async function saveUi(){
@@ -1620,7 +1631,8 @@ static void handleGetSettings() {
   j += "\"pass\":\""    + cfgPass    + "\",";
   j += "\"blename\":\"" + cfgBleName + "\",";
   j += "\"theme\":\""   + cfgTheme   + "\",";
-  j += "\"accent\":\""  + cfgAccent  + "\"}";
+  j += "\"accent\":\""  + cfgAccent  + "\",";
+  j += "\"swift\":"     + String(cfgSwift ? "true" : "false") + "}";
   server.send(200, "application/json", j);
 }
 
@@ -1642,6 +1654,10 @@ static void handlePostSettings() {
   }
   if (server.hasArg("theme"))  { prefs.putString("theme",  server.arg("theme"));  cfgTheme  = server.arg("theme"); }
   if (server.hasArg("accent")) { prefs.putString("accent", server.arg("accent")); cfgAccent = server.arg("accent"); }
+  if (server.hasArg("swift")) {
+    bool v = server.arg("swift") == "true" || server.arg("swift") == "1";
+    if (v != cfgSwift) { prefs.putBool("swift", v); rebootNeeded = true; }
+  }
   prefs.end();
 
   server.send(200, "application/json",
@@ -1754,6 +1770,29 @@ static void handleRmFolder() {
 }
 
 // ---------------------------------------------------------------------------
+// Windows Swift Pair: make THIS keyboard advertise a "connect" prompt so a
+// nearby Windows PC surfaces a notification instead of you opening Bluetooth
+// settings. This advertises our single real device, using Microsoft's intended
+// accessory fast-pairing beacon; it is not a broadcast popup-spammer.
+// The prompt shows the keyboard's Bluetooth name (cfgBleName).
+// ---------------------------------------------------------------------------
+static void applySwiftPair() {
+#ifdef USE_NIMBLE
+  if (!cfgSwift) return;
+  NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
+  if (!adv) return;
+  // Microsoft Beacon, "Pairing over LE only" scenario:
+  //   company id 0x0006 (Microsoft), beacon id 0x03, sub-scenario 0x00, reserved 0x80.
+  uint8_t msd[] = {0x06, 0x00, 0x03, 0x00, 0x80};
+  adv->setManufacturerData(std::string((char *)msd, sizeof(msd)));
+  adv->setScanResponse(true);   // keep the device name in the scan response so the advert fits
+  adv->stop();
+  adv->start();
+  Serial.println("[BLE] Swift Pair 'connect' prompt enabled (Windows)");
+#endif
+}
+
+// ---------------------------------------------------------------------------
 // Setup / loop
 // ---------------------------------------------------------------------------
 void setup() {
@@ -1798,6 +1837,7 @@ void setup() {
   bleKeyboard = new BleKeyboard(cfgBleName.c_str(), "Espressif", 100);
   bleKeyboard->begin();
   Serial.printf("[BLE] advertising as '%s'\n", cfgBleName.c_str());
+  applySwiftPair();
 
   server.on("/",         HTTP_GET,  handleRoot);
   server.on("/style.css",HTTP_GET,  handleStyle);

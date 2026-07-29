@@ -120,8 +120,24 @@ navbar of three tabs:
 - **Connection** — live status: Bluetooth connected badge, the pairing name,
   the WiFi network, the web address, and how many WiFi clients are joined.
 - **Settings** — change the **WiFi SSID/password** and the **Bluetooth name**
-  (saved to flash; the board reboots to apply them), plus **theme** and
-  **accent color** (defaults to terminal green) with a live preview.
+  (saved to flash; the board reboots to apply them), toggle **Windows Swift
+  Pair** (see below), plus **theme** and **accent color** (defaults to terminal
+  green) with a live preview.
+
+### Windows Swift Pair
+
+Enabling **Swift Pair** in Settings makes the keyboard advertise Microsoft's
+standard accessory fast-pairing beacon, so a nearby **Windows** PC shows a
+*"Connect to &lt;name&gt;"* notification for it — you click that instead of
+opening Bluetooth settings. The prompt shows the keyboard's Bluetooth name, so
+renaming the device (also in Settings) renames the prompt.
+
+This advertises **only this one real keyboard**, using the OS feature as
+intended. It is **not** a BLE "spam"/popup-broadcast tool: it does not spoof
+other products (AirPods, Fast Pair, …) or blast pairing popups at bystanders'
+devices — those crash phones and hit non-consenting people, and are out of
+scope for this project. Swift Pair is **Windows-only**; macOS/iOS have no open
+equivalent, so on a Mac you still pair from Bluetooth settings.
 
 The **connected** badge and header dot turn green once the target is paired
 over Bluetooth.

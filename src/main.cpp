@@ -1394,6 +1394,16 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
    <div class="kv"><span class="k">Web address</span><span id="c_ip">…</span></div>
    <div class="kv"><span class="k">WiFi clients</span><span id="c_cli">…</span></div>
   </div>
+
+  <div class="card">
+   <div class="row"><h2 style="margin:0">Connected devices</h2>
+     <span id="c_np" class="badge off" style="margin-left:auto">0</span></div>
+   <div id="peers" style="margin-top:4px"></div>
+   <div class="note">A Bluetooth keyboard talks to one host at a time, so keystrokes go to the
+    connected device. To pick which host is the target, disconnect the ones you don't want — the
+    remaining connected device is the one that gets injected.</div>
+  </div>
+
   <div class="note">On the target device, open Bluetooth settings and pair with the name shown above.
    The status turns green once it connects, and scripts will then type on that device.</div>
  </section>
@@ -1523,7 +1533,15 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
    let b=$('badge');b.textContent=up?'connected':'not connected';b.className='badge '+(up?'on':'off');
    let c=$('c_ble');c.textContent=up?'connected':'not connected';c.className='badge '+(up?'on':'off');
    $('c_bt').textContent=j.blename;$('c_ssid').textContent=j.ssid;$('c_ip').textContent='http://'+j.ip;
-   $('c_cli').textContent=j.clients;}catch(e){}}
+   $('c_cli').textContent=j.clients;}catch(e){}loadPeers();}
+ async function loadPeers(){try{let arr=await (await fetch('/peers')).json();
+   let np=$('c_np');np.textContent=arr.length;np.className='badge '+(arr.length?'on':'off');
+   if(!arr.length){$('peers').innerHTML='<div class="empty">No devices connected.</div>';return;}
+   let h='';arr.forEach((p,i)=>{h+='<div class="preset"'+(i?'':' style="border-top:0"')+'>'+
+     '<div class="meta"><div class="n">&#128241; '+enc(p.addr)+'</div><div class="d">handle '+p.handle+'</div></div>'+
+     '<button class="mini dan" onclick="disc('+p.handle+')">disconnect</button></div>';});
+   $('peers').innerHTML=h;}catch(e){}}
+ async function disc(h){await fetch('/disconnect?handle='+h,{method:'POST'});toast('Disconnected');loadPeers();}
  async function loadCfg(){CFG=await (await fetch('/settings')).json();applyTheme();
    $('s_ssid').value=CFG.ssid;$('s_pass').value=CFG.pass;$('s_ble').value=CFG.blename;
    $('s_theme').value=CFG.theme;$('s_accent').value=CFG.accent;$('s_swift').checked=!!CFG.swift;}
@@ -1623,6 +1641,35 @@ static void handleStatus() {
   j += ",\"clients\":" + String(WiFi.softAPgetStationNum());
   j += "}";
   server.send(200, "application/json", j);
+}
+
+// List the BLE host(s) currently connected to this keyboard (address + handle).
+// A BLE HID keyboard is normally connected to a single host at a time.
+static void handlePeers() {
+  String json = "[";
+#ifdef USE_NIMBLE
+  NimBLEServer *s = NimBLEDevice::getServer();
+  if (s) {
+    size_t n = s->getConnectedCount();
+    for (size_t i = 0; i < n; i++) {
+      NimBLEConnInfo ci = s->getPeerInfo(i);
+      if (i) json += ",";
+      json += "{\"addr\":\"" + String(ci.getAddress().toString().c_str()) +
+              "\",\"handle\":" + String(ci.getConnHandle()) + "}";
+    }
+  }
+#endif
+  json += "]";
+  server.send(200, "application/json", json);
+}
+
+// Disconnect one connected host by its connection handle.
+static void handleDisconnect() {
+#ifdef USE_NIMBLE
+  NimBLEServer *s = NimBLEDevice::getServer();
+  if (s && server.hasArg("handle")) s->disconnect((uint16_t)server.arg("handle").toInt());
+#endif
+  server.send(200, "text/plain", "ok");
 }
 
 static void handleGetSettings() {
@@ -1843,6 +1890,8 @@ void setup() {
   server.on("/style.css",HTTP_GET,  handleStyle);
   server.on("/folder",   HTTP_GET,  handleFolderPage);
   server.on("/status",   HTTP_GET,  handleStatus);
+  server.on("/peers",    HTTP_GET,  handlePeers);
+  server.on("/disconnect",HTTP_POST, handleDisconnect);
   server.on("/presets",  HTTP_GET,  handlePresets);
   server.on("/settings", HTTP_GET,  handleGetSettings);
   server.on("/settings", HTTP_POST, handlePostSettings);

@@ -118,7 +118,14 @@ navbar of three tabs:
   scripts are listed under the editor. Saved scripts live in flash
   (LittleFS) under `/s/<folder>/<name>.txt`.
 - **Connection** — live status: Bluetooth connected badge, the pairing name,
-  the WiFi network, the web address, and how many WiFi clients are joined.
+  the WiFi network, the web address, and how many WiFi clients are joined. It
+  also lists the **connected Bluetooth host(s)** (address + connection handle)
+  with a **disconnect** button for each. A BLE keyboard talks to one host at a
+  time, so keystrokes go to the connected device; to choose which host is the
+  target, disconnect the ones you don't want and the remaining connected device
+  is the one that gets injected. (Selectively injecting into one of several
+  simultaneously-connected hosts isn't possible with the BLE-HID model — a
+  keyboard broadcasts its report to whichever host is subscribed.)
 - **Settings** — change the **WiFi SSID/password** and the **Bluetooth name**
   (saved to flash; the board reboots to apply them), toggle **Windows Swift
   Pair** (see below), plus **theme** and **accent color** (defaults to terminal
